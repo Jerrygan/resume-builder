@@ -1,0 +1,406 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>网页简历（可编辑）</title>
+<style id="css">
+
+:root{ --accent:#E2AB37; --accent-soft:rgba(226,171,55,.28); }
+*{box-sizing:border-box;}
+html,body{margin:0;padding:0;background:#eef1f5;color:#323333;
+  font-family:"Microsoft YaHei","PingFang SC","Hiragino Sans GB",sans-serif;}
+body{padding:64px 16px 40px;}
+.wrap{display:flex;justify-content:center;}
+#resume.page{width:210mm;min-height:297mm;background:#fff;padding:14mm 15mm;
+  box-shadow:0 8px 34px rgba(0,0,0,.16);border-radius:3px;font-size:14px;line-height:1.7;}
+.hd{display:flex;align-items:center;gap:22px;}
+.photo{width:118px;height:118px;flex:none;border-radius:50%;overflow:hidden;
+  border:4px solid var(--accent);box-shadow:0 4px 14px var(--accent-soft);}
+.photo img{width:100%;height:100%;object-fit:cover;display:block;}
+.who{flex:1;min-width:0;}
+.name{font-family:"方正粗黑宋简体","Microsoft YaHei",sans-serif;font-size:42px;
+  letter-spacing:6px;color:#222;line-height:1.15;font-weight:700;}
+.title{margin-top:6px;font-size:17px;color:#555;}
+.contact{margin-top:10px;display:flex;flex-wrap:wrap;gap:4px 20px;font-size:13.5px;color:#5a5a5a;}
+.contact span{position:relative;padding-left:13px;}
+.contact span::before{content:"";position:absolute;left:0;top:9px;width:5px;height:5px;
+  border-radius:50%;background:var(--accent);}
+.rule{height:3px;background:linear-gradient(90deg,var(--accent),var(--accent-soft));
+  border-radius:3px;margin:18px 0 20px;}
+.timeline{position:relative;}
+.timeline::before{content:"";position:absolute;left:16px;top:14px;bottom:8px;width:2px;
+  background:var(--accent-soft);}
+.sec{position:relative;padding-left:52px;margin-bottom:22px;}
+.sec>.badge{position:absolute;left:0;top:0;width:34px;height:34px;border-radius:50%;
+  background:var(--accent);display:flex;align-items:center;justify-content:center;
+  box-shadow:0 0 0 4px #fff,0 0 0 5px var(--accent-soft);}
+.sec>.badge img{width:19px;height:19px;object-fit:contain;}
+.sec>h2{font-family:"方正粗黑宋简体","Microsoft YaHei",sans-serif;font-size:20px;color:var(--accent);
+  margin:3px 0 10px;line-height:28px;font-weight:700;letter-spacing:1px;}
+.basics{display:grid;grid-template-columns:1fr 1fr;gap:4px 26px;}
+.basics .k{color:#7a7a7a;}
+.item{position:relative;margin-bottom:13px;}
+.item .row{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;}
+.item .row .left{flex:1;min-width:0;}
+.item .row b{font-size:15px;color:#222;}
+.item .role{color:var(--accent);font-size:13.5px;margin-left:8px;}
+.item .time{color:#777;font-size:13.5px;white-space:nowrap;}
+.desc{margin:5px 0 0;color:#3a3a3a;}
+.desc .k{color:#7a7a7a;}
+.mono{font-family:Consolas,Menlo,monospace;font-size:13px;color:#444;}
+ul.bul{list-style:none;margin:6px 0 2px;padding:0;}
+ul.bul li{position:relative;padding-left:16px;margin:3px 0;line-height:1.72;color:#3a3a3a;}
+ul.bul li::before{content:"";position:absolute;left:1px;top:9px;width:6px;height:6px;
+  border-radius:1.5px;background:var(--accent);}
+.item.skill{position:relative;padding-left:16px;line-height:1.75;}
+.item.skill::before{content:"";position:absolute;left:1px;top:10px;width:6px;height:6px;
+  border-radius:1.5px;background:var(--accent);}
+.eval{margin:0;line-height:1.8;color:#3a3a3a;}
+/* controls */
+.ctl{display:none;}
+body.editing .ctl{display:inline-block;}
+button.add{background:var(--accent);color:#fff;border:0;border-radius:14px;padding:3px 12px;
+  font-size:12.5px;cursor:pointer;margin:2px 4px 0 0;font-family:inherit;}
+button.del{position:absolute;right:-2px;top:0;background:#fff;color:#c0392b;border:1px solid #e6b0aa;
+  border-radius:50%;width:20px;height:20px;line-height:16px;font-size:14px;cursor:pointer;padding:0;z-index:3;}
+.item.skill>button.del{position:static;margin-left:8px;}
+.sec>.secdel{position:absolute;right:0;top:0;}
+.sec>.dragsec{position:absolute;right:22px;top:0;}
+.bul li>.dragli{position:absolute;right:20px;top:0;}
+.handle{background:#fff;border:1px solid #d9d9d9;border-radius:50%;width:20px;height:20px;line-height:18px;text-align:center;font-size:12px;color:#999;cursor:grab;z-index:3;}
+.handle:active{cursor:grabbing;}
+.dragging{opacity:.45;}
+.txt code{font-family:Consolas,Menlo,monospace;font-size:12.5px;background:#f2f3f5;border:1px solid #e3e5e8;border-radius:4px;padding:0 4px;color:#444;}
+.txt mark{background:linear-gradient(180deg,transparent 55%,var(--accent-soft) 55%);color:inherit;padding:0 1px;border-radius:2px;}
+.txt strong{font-weight:700;color:#222;}
+.txt em{font-style:italic;}
+.txt del{color:#999;}
+.txt{display:block;min-height:1.5em;}
+.cell{display:inline-block;vertical-align:top;width:calc(100% / var(--cols,1));box-sizing:border-box;padding:1px 8px;}
+.cell.wide{width:100%;}
+.cell .lbl{display:inline-block;background:var(--accent-soft);color:#7a5c12;font-weight:700;border-radius:5px;padding:0 7px;margin-right:3px;}
+body.gridlines ul.bul.cols .cell{border:1px solid #e6e6e6;}
+body.gridlines ul.bul.cols li{padding-left:16px;}
+#guide{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);z-index:100;background:#1f2937;color:#fff;padding:12px 16px;border-radius:12px;box-shadow:0 8px 24px rgba(0,0,0,.3);display:none;gap:14px;align-items:center;max-width:92vw;font-size:13.5px;}
+#guide.show{display:flex;}
+#guide .g-txt{display:flex;flex-direction:column;}
+#guide .g-txt b{font-size:14.5px;margin-bottom:2px;}
+#guide .g-txt span{color:#cbd5e1;}
+#guide .g-btn{background:var(--accent);color:#1f2937;border:0;border-radius:8px;padding:7px 14px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap;}
+.modal-mask{position:fixed;inset:0;background:rgba(15,23,42,.5);z-index:110;display:none;align-items:center;justify-content:center;padding:20px;}
+.modal-mask.on{display:flex;}
+.modal-card{background:#fff;border-radius:14px;max-width:660px;width:100%;max-height:82vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.35);}
+.modal-hd{display:flex;justify-content:space-between;align-items:center;padding:14px 18px;border-bottom:1px solid #eef0f3;font-weight:700;font-size:16px;color:#222;}
+.modal-x{border:0;background:#f1f3f6;border-radius:8px;width:30px;height:30px;font-size:18px;cursor:pointer;color:#555;line-height:1;}
+.modal-bd{padding:14px 20px 22px;overflow:auto;line-height:1.85;font-size:14px;color:#333;}
+.modal-bd ol{margin:0;padding-left:20px;}
+.modal-bd li{margin:8px 0;}
+.modal-bd code{background:#f2f3f5;border:1px solid #e3e5e8;border-radius:4px;padding:0 5px;font-family:Consolas,Menlo,monospace;font-size:12.5px;}
+.modal-bd .grip{color:#999;}
+.modal-bd .xx{color:#c0392b;}
+#changePhoto{border:0;background:#eef1f5;color:#666;border-radius:14px;padding:4px 12px;
+  margin-top:10px;font-size:12.5px;cursor:pointer;font-family:inherit;}
+body.editing .e{outline:1px dashed var(--accent-soft);outline-offset:2px;border-radius:3px;min-width:20px;}
+body.editing .e:focus{outline:2px solid var(--accent);background:#fffdf6;}
+/* toolbar */
+#toolbar{position:fixed;left:50%;top:12px;transform:translateX(-50%);z-index:90;display:flex;gap:8px;
+  align-items:center;background:rgba(31,41,55,.94);backdrop-filter:blur(6px);padding:8px 12px;
+  border-radius:12px;box-shadow:0 6px 20px rgba(0,0,0,.25);color:#fff;font-size:14px;}
+#toolbar button{font-family:inherit;font-size:14px;border:0;border-radius:8px;padding:7px 14px;
+  cursor:pointer;background:#374151;color:#fff;transition:.15s;}
+#toolbar button:hover{background:#4b5563;}
+#toolbar #btnEdit{background:var(--accent);color:#1f2937;font-weight:700;}
+#toolbar .sep{width:1px;height:22px;background:#4b5563;margin:0 2px;}
+#toolbar label{display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px;color:#d1d5db;}
+#toolbar input[type=color]{width:26px;height:26px;border:0;background:none;padding:0;cursor:pointer;}
+.tip{position:fixed;left:50%;bottom:14px;transform:translateX(-50%);z-index:90;color:#64748b;font-size:12.5px;}
+@media (max-width:820px){
+  #resume.page{width:100%;padding:20px 16px;min-height:auto;}
+  .name{font-size:32px;} .basics{grid-template-columns:1fr;}
+  #toolbar{flex-wrap:wrap;justify-content:center;max-width:96vw;}
+}
+@media print{
+  @page{size:A4;margin:0;}
+  html,body{background:#fff;}
+  body{padding:0;}
+  .wrap{display:block;}
+  #resume.page{width:auto;min-height:0;box-shadow:none;border-radius:0;padding:12mm 14mm;margin:0;}
+  #toolbar,.ctl,#changePhoto,#guide,.modal-mask{display:none!important;}
+  .sec,.item{break-inside:avoid;}
+}
+
+</style>
+</head>
+<body>
+<div id="toolbar">
+  <button id="btnEdit">编辑</button>
+  <button id="btnSave">保存</button>
+  <button id="btnReset">重置</button>
+  <span class="sep"></span>
+  <button id="btnPrint">打印 / PDF</button>
+  <button id="btnExport">导出 HTML</button>
+  <span class="sep"></span>
+  <label>主题色 <input type="color" id="accent" value="#E2AB37"></label>
+  <span class="sep"></span>
+  <button id="btnHelp">? 使用说明</button>
+</div>
+
+<div class="wrap">
+  <article id="resume" class="page">
+<header class="hd"><div class="photo"><img id="photoImg" src="data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A//www.w3.org/2000/svg%27%20viewBox%3D%270%200%20200%20200%27%3E%3Cdefs%3E%3ClinearGradient%20id%3D%27bg%27%20x1%3D%270%27%20y1%3D%270%27%20x2%3D%270%27%20y2%3D%271%27%3E%3Cstop%20offset%3D%270%27%20stop-color%3D%27%23f6f8fb%27/%3E%3Cstop%20offset%3D%271%27%20stop-color%3D%27%23e2e8f0%27/%3E%3C/linearGradient%3E%3CradialGradient%20id%3D%27hl%27%20cx%3D%270.5%27%20cy%3D%270.32%27%20r%3D%270.62%27%3E%3Cstop%20offset%3D%270%27%20stop-color%3D%27%23ffffff%27%20stop-opacity%3D%270.95%27/%3E%3Cstop%20offset%3D%271%27%20stop-color%3D%27%23ffffff%27%20stop-opacity%3D%270%27/%3E%3C/radialGradient%3E%3C/defs%3E%3Crect%20width%3D%27200%27%20height%3D%27200%27%20fill%3D%27url%28%23bg%29%27/%3E%3Crect%20width%3D%27200%27%20height%3D%27200%27%20fill%3D%27url%28%23hl%29%27/%3E%3Ccircle%20cx%3D%27100%27%20cy%3D%2781%27%20r%3D%2736%27%20fill%3D%27%23a9b3c1%27/%3E%3Cpath%20d%3D%27M28%20200c0-40%2032-65%2072-65s72%2025%2072%2065z%27%20fill%3D%27%23a9b3c1%27/%3E%3C/svg%3E" alt="照片"></div><div class="who"><div class="name e">李明</div><div class="title e">求职意向：Java 高级工程师</div><button class="ctl add" id="changePhoto">更换照片</button></div></header><div class="rule"></div><div class="timeline"><section class="sec"><span class="badge"><img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACoAAAAsCAYAAAATmipGAAABc2lDQ1BJQ0MgUHJvZmlsZQAAeJx1kc0rBGEcxz92idbKASU5zGHJYZUoOWoVFxx2V3m7zM6+qZkxzcwmuSoXB+UgLt4O/gOuypVSipTk7OjtIo3fY9RKPNMzv0/f5/n++s13IDJuGpZXOwyW7bvpsZQ2PTOr1T8So40ISdANz5nIjGb5d71dU6PqVa/q9f+9P1djvuAZUNMgPGg4ri8s0zC+5DuK14VbjbKeF94TTroyoPC50nMhPyguhfyi2M2mRyCiemqlH5z7wUbZtYR7hBOWWTG+51FfEi/YUxmpHbI78UgzRgqNHBUWMPHplWpLZn/7+r58kyyKx5C3wzKuOEqUxZsUtSJdC1KLohfkMVlWuf/O0ysO9Ifd4ymouw+C5y6o34SPjSB43w+CjwOI3sGpXfUvSk5Dr6JvVLXELjSvwvFZVcttwckatN86uqt/SVHZkWIRno6gaQZaLiE2F2b1fc7hDWRX5BddwPYOdMv95vlP/RtoCDZfAGEAAAOHSURBVHicxZlLaF1VFIa/PMQ+kmCVKBaNSk1tJdRnA+ogWFCoouKD2lpwIoIKtkVRKFKdNVKdOFLxNSgOokVxIm0noRaxHWikaNVBICKpFS01JjWhtvkdnHtgdd177l375Cb5YcPa++5/r+/uc/bZ59EiiTnqcmAAuB1YC6yutI8BPwEjwFeVenlJKluukvSepH/VWLOS9knqK5uvLOQLkqYDgLW0p0zOFqUf+j3AS67tGHAY+Bn4CxBwCXA9cBdwh+s/BGyez0O/3c3OcUmPBnwDkg4579spuVMgb3KJ9pU4hINujMifTAY9ZhJ8XwIyL5+acSYkdTQTdKObiWvmANoqacaMtSPiaw2eyo+YeD/wa9JCuFCzZAsy1wMRUxS018QfRonqaMjE10UMUdAOE4+HcYo1aeKlEUMUdMrEnWGcYlm46YghCmpncWUYp1hXmPiPiCEK2mfim6M0ddRj4lVAVyNDBHQjsK4STwKfpXNV6RvgRCXuBp5tZIiA3mviL4FD6VxVGgXeNfX+RoYIqD3xz6QS1ZFdRA1XfgTUXko6Cnula3lBjpqKgA6b+D5gL9mdfFl1A+8Dz5i2bxu6gvvzSbfX75zDXv+wqrWiWXv9Nle/O+irpfWu/gpwuqErYSZedbNwdck7p3/MGB9FvamJ7O3ZUAnQXe7PLpsv0N0u0ZYE723OezAldyroEklTLuFjAV+/pDPOd+V8giJpnaT/XNIX6/TfpGo9lJq3DCiSbpH0m0u+pKCvvbT9XQZSil+evEaAD0x9kuwRo5b+NPFB4IsyCcuAbgB2A0+ZtmngbEH/CRPfA7wFPJicNWH6n5R0pMb5JtV/kvRPsLl+bOBLPkdvkDRckEyS3gmM8XId/w+S7pwr6LaCwYcrs9EfnRFJayU9LelzVV/iJOn1sqCfuIFmJL0m6doEuKJymaTnJY27HIclXRoFXS7pazfAAUmrmgDoS5ey/d5qrNZkeGObpO+c8c15APTlOZfzpNzO5Q1+Ve9YAMi83O9yn5B0cS3Qj13HXQsImRe/3R71oFtdh72LAJmXnY5lMAftdD+MLCJkXoYcU28rF772GwduTd7emq/HgaOm/kQ72TeiXJNkL8FagLYFBLM6XymnTNuN7cAvpmEN2U3EBIsLugy4yLT93iJpKdlnl56atsXXOaA3/87URfbYuoHmvP9shmaAI8AbwOj/LCVyozjtmjwAAAAASUVORK5CYII=" alt=""></span><h2 class="e">基本信息</h2><span class="ctl handle dragsec" draggable="true" title="拖动板块">⠿</span><button class="ctl del secdel" data-act="delsection" title="删除该板块">×</button><div class="basics"><div><span class="k">性别：</span><b class="e">男</b></div><div><span class="k">年龄：</span><b class="e">28岁</b></div><div><span class="k">学历：</span><b class="e">本科</b></div><div><span class="k">学校：</span><b class="e">华南理工大学</b></div><div><span class="k">电话：</span><b class="e">138-8888-8888</b></div><div><span class="k">邮箱：</span><b class="e">liming@example.com</b></div></div><button class="ctl add" data-act="addsectionbullet">＋ 要点</button></section><section class="sec"><span class="badge"><img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADUAAAAtCAYAAAAOYyOGAAABc2lDQ1BJQ0MgUHJvZmlsZQAAeJx1kc0rBGEcxz92idbKASU5zGHJYZUoOWoVFxx2V3m7zM6+qZkxzcwmuSoXB+UgLt4O/gOuypVSipTk7OjtIo3fY9RKPNMzv0/f5/n++s13IDJuGpZXOwyW7bvpsZQ2PTOr1T8So40ISdANz5nIjGb5d71dU6PqVa/q9f+9P1djvuAZUNMgPGg4ri8s0zC+5DuK14VbjbKeF94TTroyoPC50nMhPyguhfyi2M2mRyCiemqlH5z7wUbZtYR7hBOWWTG+51FfEi/YUxmpHbI78UgzRgqNHBUWMPHplWpLZn/7+r58kyyKx5C3wzKuOEqUxZsUtSJdC1KLohfkMVlWuf/O0ysO9Ifd4ymouw+C5y6o34SPjSB43w+CjwOI3sGpXfUvSk5Dr6JvVLXELjSvwvFZVcttwckatN86uqt/SVHZkWIRno6gaQZaLiE2F2b1fc7hDWRX5BddwPYOdMv95vlP/RtoCDZfAGEAAATOSURBVHic1ZprqFRVGIafc47HC4pmmh1SumgelSwVyy5kaFIpFgrlD6GLWhFdoCQI7YciBVY/zCgosEK6aXZRCYs0Ci2x8oeUeSkkM0sNEzU1Nc2nH2sPbMe9Z++ZM3M8vfCxZ9b+1rfed9bt23tNnUqNMBiYDIwG+gE9gFPALmAzsAJ4GzhQ7YbrqiyqCZgITADG5vD/C1gCfAwsrRaJaokaDUwD7gA6VhhjO/AOofe2tIRMS0QNAe4h9MwlJfy2AuuAX4AGwlC8Dehaos43wGLgLeDPspmp5dgF6t3qZ5bGPnWJOiElzrnqg+oXGXEOq6+qY9V2eXnmFXOzulg9nkHiK/U+tUteAuql6mz154zYv6rPqJe1RNSV6nx1c0ZjP6hPqkPLEJJmN6kvqvsz2vxcfVxtyiOqkzpFXZ0R9JD6rmFYtFRIknVT71fXZvA4qi5Ux6SJmqTuzgiySr3LMCdqISbJmtWZ6tYMbqvVXnFR15Vw3qDOUYe0opA0G6++rO5N4bpN7YjaqP5WdPOA+qZ6YxsQkmRdTJ8mcwvDLo6P1O5tgHheG6b+EeO/ux64pmjrehjYX/aGd/awAZgX+96rHuhU5LS39fhUDTtjn+vrgW1FDlNbkUy1EOd8GLVvwmR71rax2pWy9uq4aA2IY1XB4ekEYRqW8yfU3m1ARMFGGJb1XSmch8Wdl6c4qf6jLjJsvJ3PgpC+6gx1TQmOGpLkM9Kkh8zeufcacsLhrSBmgrosg4/qSvXaQr20YM/lCKT6rTpL7VdFIderC8zO2jeojxrSqNNipAWeEqt8zNDthzMaeU+dbGUbd3NEcF1GG6r/qhNLxUu7MT0W5JDaR12fo0HVg+orhnyylJAGQzazIiPeAU+fEicy4tIuxx7QAPSMrgUsAH4EHgP6FPl3BR6I7HvgE8Lj/B7CRt8MjAJGJtSNYy2wEHgfGE94tAeoA3oDv6dVzCMKgqC62PdNwAuRTQLuBMYAHYrqXRFZXuwkvDp7HVgfK+9RRozcoopxfnQ9CSyKrInwNmkKMLyMWKeAD4DXgJVA0puguoSyVFQqKqnhPcBLkd0AjANuB/on+P5NGF7LCD2zo0IeiahUVBbWRDYTGEQQ1hU4SkiYNwH7atR2zUTFsYUWvpwsF/UV1jtYVRbZKOv5Lo8ogUagfaysuZxGqoBBsc8NZIywPKIaCb9UY6zsXuBTwkJQS9wKLAdmFJWXHik5Mgqj3X9ayo6/TZ2rjlTPy9rtM6y7ITGdrW5MaW9+Vpy0A4LpnP7cfzFh2Z0DzCrxGx0nnD19F113EF7w7wOOEIZyHSGz6EHIVC4CBgJDCcOsc4n48yNupZGzpwbH7o1Q30j5FWuFD9VR5uzxtBtTi4L2TPAZYHjs31IjIdvV59XL84opWNrwm1fUzbcQUpg0DACuBq6KhtHAaGjlxX7COdZGwtnU14ThWxGSRPXjzDdMv0blJ3PG7Ug4iGuKrBvQhbAcnyLMr4OE1GoP4UDuSNnsU5C03g9NKLsQOIf8p3rHOAuZRAFJ+9SxhLKjtSZSTSSJSppkppS3SVSa+7VpJIlqTChrSPFtk0giejyhrANwosZcqoYkUV9y5iq3lBr83aZWSNt8+wOPEPKzn4Cn+B8tFP8BwosRW2gYz5EAAAAASUVORK5CYII=" alt=""></span><h2 class="e">教育背景</h2><span class="ctl handle dragsec" draggable="true" title="拖动板块">⠿</span><button class="ctl del secdel" data-act="delsection" title="删除该板块">×</button><div class="item"><div class="row"><div class="left"><span class="time e">2014.09 - 2018.06</span> <b class="e">华南理工大学</b> <span class="role e">软件工程</span></div></div></div><button class="ctl add" data-act="addsectionbullet">＋ 要点</button></section><section class="sec"><span class="badge"><img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAC8AAAArCAYAAADottG6AAABc2lDQ1BJQ0MgUHJvZmlsZQAAeJx1kc0rBGEcxz92idbKASU5zGHJYZUoOWoVFxx2V3m7zM6+qZkxzcwmuSoXB+UgLt4O/gOuypVSipTk7OjtIo3fY9RKPNMzv0/f5/n++s13IDJuGpZXOwyW7bvpsZQ2PTOr1T8So40ISdANz5nIjGb5d71dU6PqVa/q9f+9P1djvuAZUNMgPGg4ri8s0zC+5DuK14VbjbKeF94TTroyoPC50nMhPyguhfyi2M2mRyCiemqlH5z7wUbZtYR7hBOWWTG+51FfEi/YUxmpHbI78UgzRgqNHBUWMPHplWpLZn/7+r58kyyKx5C3wzKuOEqUxZsUtSJdC1KLohfkMVlWuf/O0ysO9Ifd4ymouw+C5y6o34SPjSB43w+CjwOI3sGpXfUvSk5Dr6JvVLXELjSvwvFZVcttwckatN86uqt/SVHZkWIRno6gaQZaLiE2F2b1fc7hDWRX5BddwPYOdMv95vlP/RtoCDZfAGEAAAKeSURBVHic7Zm9axRBGMZ/u94Zc34GRdAmWigq2IiFKDGVbUT/AYU0imAnFloKCidqCjvBQvAPEAUJWNhICsEiGD+KiKCJirmYiPiRu3stZvbujWB2Zhack9wDy7yzt88zz8ztvvfOXiIiFMAgcBHYCZQBF7EEqAOTQBV4EDp4UsD8YeBxKFnhKHAvhBhqPsGs3DbgJ3ATmLHn8yBAL3AG6APmgU3AgrcLEQk5tkgbFwI1hpTGnhCN1Hu2BqtU/CZQY1LFvSECoeb1V7w6UGOdin+FCISaf6fiz4EaU3/Rc0ZJxaeB/ZhborkER1i82ueBY7g9rFpjs+rfAWo5GikmOYwDNwBJRKQHeAQc8hg8NsaBwURERoCz9uQEMB3PUy76gH02vouIzNp0NRqY8v71cdv6raVAxc7kYZzF9MZ925azhwBgfSQzvtho2wWdKn2yRUy0fIbm+Y5A13wsLGvzFWBXIHcHsKHI4EXMl4Ax4AUw5MkdAF4DzwmvSheZ/+jJrQN7bbzbk7vdtluBb57cVgWqq8rjwBrct3IVTF1fBo7Y867cg6pfxZTVrtwDWZyIyDyw1oHYaZjRKy9AA7fnQDArlaq+K7cJrKC90k2l58XV5qvAdfthHgSTKZ5i9p/XgKuO3AYwDFyy/QHMPthl4g3gBHAFSLX598AHB4EMU7Q3zt89uV9UPPFHPw9vs0DP1ve+LwHPbDzmyc140/i/r2lVv6WlrspBHbN17AdeenKfYH7cPuGfKlsoYh7M7eJrPMOrgmMv79omKrrmY6FrPha65mPhvzefTaAe04gHGrZNUqDHdn5EMuOLr7ZdWcKUwv3ASWAUmKMzX/1lf2qcsv25RESGgVvxPAXjXPbO+7KI1ESkKZ2PWREZERF+A9QLXDmfUHceAAAAAElFTkSuQmCC" alt=""></span><h2 class="e">工作经验</h2><span class="ctl handle dragsec" draggable="true" title="拖动板块">⠿</span><button class="ctl del secdel" data-act="delsection" title="删除该板块">×</button><div class="items"><div class="item"><div class="row"><div class="left"><b class="e">星辰网络科技有限公司</b> <span class="role e">高级 Java 工程师</span></div><span class="time e">2021.07 – 至今</span><button class="ctl del" data-act="delentry" title="删除">×</button></div><ul class="bul "><li class="bul-item"><span class="ctl handle dragli" draggable="true" title="拖动要点">⠿</span><span class="txt e">负责订单、支付核心链路的架构设计与开发，支撑日均 500 万订单</span><button class="ctl del" data-act="delbullet" title="删除">×</button></li><li class="bul-item"><span class="ctl handle dragli" draggable="true" title="拖动要点">⠿</span><span class="txt e">主导订单超时、幂等等问题的治理，异常订单率下降 90%</span><button class="ctl del" data-act="delbullet" title="删除">×</button></li><li class="bul-item"><span class="ctl handle dragli" draggable="true" title="拖动要点">⠿</span><span class="txt e">推动服务化改造，核心接口 P99 从 800ms 降至 200ms</span><button class="ctl del" data-act="delbullet" title="删除">×</button></li></ul><button class="ctl add" data-act="addbullet">＋ 要点</button></div><div class="item"><div class="row"><div class="left"><b class="e">云启信息技术有限公司</b> <span class="role e">Java 工程师</span></div><span class="time e">2018.07 - 2021.06</span><button class="ctl del" data-act="delentry" title="删除">×</button></div><ul class="bul "><li class="bul-item"><span class="ctl handle dragli" draggable="true" title="拖动要点">⠿</span><span class="txt e">负责电商后台（商品、营销、订单）的设计与开发</span><button class="ctl del" data-act="delbullet" title="删除">×</button></li><li class="bul-item"><span class="ctl handle dragli" draggable="true" title="拖动要点">⠿</span><span class="txt e">独立完成营销活动系统的表设计与实现</span><button class="ctl del" data-act="delbullet" title="删除">×</button></li><li class="bul-item"><span class="ctl handle dragli" draggable="true" title="拖动要点">⠿</span><span class="txt e">参与系统性能优化与线上问题排查</span><button class="ctl del" data-act="delbullet" title="删除">×</button></li></ul><button class="ctl add" data-act="addbullet">＋ 要点</button></div></div><button class="ctl add" data-act="addwork">＋ 添加工作经历</button><button class="ctl add" data-act="addsectionbullet">＋ 要点</button></section><section class="sec"><span class="badge"><img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAC0AAAArCAYAAADsQwGHAAABc2lDQ1BJQ0MgUHJvZmlsZQAAeJx1kc0rBGEcxz92idbKASU5zGHJYZUoOWoVFxx2V3m7zM6+qZkxzcwmuSoXB+UgLt4O/gOuypVSipTk7OjtIo3fY9RKPNMzv0/f5/n++s13IDJuGpZXOwyW7bvpsZQ2PTOr1T8So40ISdANz5nIjGb5d71dU6PqVa/q9f+9P1djvuAZUNMgPGg4ri8s0zC+5DuK14VbjbKeF94TTroyoPC50nMhPyguhfyi2M2mRyCiemqlH5z7wUbZtYR7hBOWWTG+51FfEi/YUxmpHbI78UgzRgqNHBUWMPHplWpLZn/7+r58kyyKx5C3wzKuOEqUxZsUtSJdC1KLohfkMVlWuf/O0ysO9Ifd4ymouw+C5y6o34SPjSB43w+CjwOI3sGpXfUvSk5Dr6JvVLXELjSvwvFZVcttwckatN86uqt/SVHZkWIRno6gaQZaLiE2F2b1fc7hDWRX5BddwPYOdMv95vlP/RtoCDZfAGEAAAQYSURBVHic7ZhPaFxVFMZ/MwlpaiMq0Wia2NTGaqzGtLW0oLgSN+JC1IW4kVo3LkWKFBG6KlRwISgqqNuuRJGqKASlIEWb+geN/5g2SWMbq2KxMU2TTPK5uPc5p3fedN6fmcFFPrjMd98973vn3XfvuedMQRIBisB6oGogBkVgDvgrgS3AHuBRYAD4FZgETgHHfP8McK6eSCFwegR4D9iQwul54BPgReDoZWzfAR6uo3cB+A44CUwDXwMl4DQw85+VJNueUz7cHehFbU9gdzal7pKkw5KGJFXNdDfwKjAIrCSYaXnba31/CtgYY/cFsNPz54GXgBuAYeBG4GZgB9CLW5rrajxvERguSBoCngA+Az5O4GiIq3GftN/37wDGA5sp3JJbADrr6F0DbAN24SagD7gf6PDjYwSfak2Nz1uvHTYaDwRj3ZIW/Fgpo/6ApBmvsVIEevwblBPMQi2sMXwxGLvLzNJ0Rv0p3OYEWCwCs74zT7J1HIeC4WHU2WD4lxn1i8Bmz88XM4qkgXW6lFHjNuA6z2da4fQOw89m1NhieKkVTt9k+FhGjV7DP222051UQuG3uGM6C0YMP95sp7cBXZ7/kEPnTsN/a7bTg4b/kUPnev97DjjdbKc3Gn4so0Y/lSU2ho/TEQQsZxS2sdnG7CHDRzNqbzeap8AF7Sv8hTZcapgF9hTsMPxPw18wz0qDHsMnwTn9u7+wDpc4pcUAl26UCcMPGf60H/sAeB3YC9yHOziuuoz+ZsO/AVcE7MUl8BFKwEWgvY6z8u0WY/sjlx4EAAeAfXW0/sGFxAlcwv8V8BNuAx7CpczgYv5klEV9lDIpj8OSpOEaWdrjko5Ims6hPxrp2SJgH/AYlYQ+abl1ATgCHAR+TmC/Cbgdl/wP4rLA9b7fUeO+ceBefP0YVi7gNmQhhdNLCeySoAd38vXhXuAer/0h8Jo1jHP6f49ws+3EvSUkm+k23CYapTr5j0Ma/TLuSy5U6fvFfaukz3NskjOSnlHtcmm7pOM59XdHekjqlTSXQ9DiKVU73NcgbUl6UD56vAU86Sf+b+B90sXpESqJ/iyuOrdl29vA7gbpTwGbkDTr36IsaSRmppK0cTMbu4KxiQbrDxapxMY53KmUBScN7w7Gyg3W74x2J7jY3FVtnwhrDV8IxiKnG6W/HObTBZqLhui3orBtOFadbhVWnW4VVp1uImxB3F6k4vgKydLLOJQNrxX78+hfNHyuncpp00H1aZYUbTU4VP6oz6P/LLAf92fNREHS97iaDeAV4A0vHj48RJSFbQXeBK701/txFXWEMVwdmEa/DVdq/RL/ZOmhPAlugHdjMrRHcuidkNQTakZkv6Tzcmnqsr9hJUGTpHl/71FJXTFOI+nllPqRjSRtDfX+BUgr3ho9olGQAAAAAElFTkSuQmCC" alt=""></span><h2 class="e">项目经验</h2><span class="ctl handle dragsec" draggable="true" title="拖动板块">⠿</span><button class="ctl del secdel" data-act="delsection" title="删除该板块">×</button><div class="items"><div class="item"><div class="row"><div class="left"><b class="e">高并发电商交易平台</b><span class="role e">核心开发</span></div><span class="time e">2021.07 - 2023.03</span><button class="ctl del" data-act="delentry" title="删除">×</button></div><p class="desc"><span class="k">项目描述：</span><span class="e">面向百万级用户的电商交易平台，覆盖商品、购物车、订单、支付等核心模块。</span></p><p class="desc"><span class="k">技术栈：</span><span class="e mono">Spring Cloud + Nacos + MySQL + Redis + RocketMQ + ShardingSphere</span></p><ul class="bul "><li class="bul-item"><span class="ctl handle dragli" draggable="true" title="拖动要点">⠿</span><span class="txt e">负责订单中心的设计与开发，采用分库分表支撑单表千万级数据</span><button class="ctl del" data-act="delbullet" title="删除">×</button></li><li class="bul-item"><span class="ctl handle dragli" draggable="true" title="拖动要点">⠿</span><span class="txt e">设计分布式锁与幂等方案，解决重复下单与超卖问题</span><button class="ctl del" data-act="delbullet" title="删除">×</button></li><li class="bul-item"><span class="ctl handle dragli" draggable="true" title="拖动要点">⠿</span><span class="txt e">优化热点商品缓存与库存扣减，QPS 提升 3 倍</span><button class="ctl del" data-act="delbullet" title="删除">×</button></li></ul><button class="ctl add" data-act="addbullet">＋ 要点</button></div><div class="item"><div class="row"><div class="left"><b class="e">权益营销中台</b><span class="role e">后端负责人</span></div><span class="time e">2023.03 – 至今</span><button class="ctl del" data-act="delentry" title="删除">×</button></div><p class="desc"><span class="k">项目描述：</span><span class="e">整合卡券、积分、会员权益的营销中台，服务多个业务线。</span></p><p class="desc"><span class="k">技术栈：</span><span class="e mono">Spring Boot + MyBatis-Plus + Redis + Kafka + XXL-JOB</span></p><ul class="bul "><li class="bul-item"><span class="ctl handle dragli" draggable="true" title="拖动要点">⠿</span><span class="txt e">负责权益发放、核销链路的架构设计与实现</span><button class="ctl del" data-act="delbullet" title="删除">×</button></li><li class="bul-item"><span class="ctl handle dragli" draggable="true" title="拖动要点">⠿</span><span class="txt e">设计多租户数据隔离方案，保障数据安全</span><button class="ctl del" data-act="delbullet" title="删除">×</button></li><li class="bul-item"><span class="ctl handle dragli" draggable="true" title="拖动要点">⠿</span><span class="txt e">搭建监控与告警，提升线上问题定位效率</span><button class="ctl del" data-act="delbullet" title="删除">×</button></li></ul><button class="ctl add" data-act="addbullet">＋ 要点</button></div></div><button class="ctl add" data-act="addproject">＋ 添加项目</button><button class="ctl add" data-act="addsectionbullet">＋ 要点</button></section><section class="sec"><span class="badge"><img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACsAAAA1CAYAAADYgRIrAAABc2lDQ1BJQ0MgUHJvZmlsZQAAeJx1kc0rBGEcxz92idbKASU5zGHJYZUoOWoVFxx2V3m7zM6+qZkxzcwmuSoXB+UgLt4O/gOuypVSipTk7OjtIo3fY9RKPNMzv0/f5/n++s13IDJuGpZXOwyW7bvpsZQ2PTOr1T8So40ISdANz5nIjGb5d71dU6PqVa/q9f+9P1djvuAZUNMgPGg4ri8s0zC+5DuK14VbjbKeF94TTroyoPC50nMhPyguhfyi2M2mRyCiemqlH5z7wUbZtYR7hBOWWTG+51FfEi/YUxmpHbI78UgzRgqNHBUWMPHplWpLZn/7+r58kyyKx5C3wzKuOEqUxZsUtSJdC1KLohfkMVlWuf/O0ysO9Ifd4ymouw+C5y6o34SPjSB43w+CjwOI3sGpXfUvSk5Dr6JvVLXELjSvwvFZVcttwckatN86uqt/SVHZkWIRno6gaQZaLiE2F2b1fc7hDWRX5BddwPYOdMv95vlP/RtoCDZfAGEAAAPOSURBVHicvZpfiBdVFMc/a7q2kdAS4SYqS2spkinRW4hCGG4bW2ggpIIkSoIWPUgo+JRGgQ9qL2o9KG0FLQupWKiblfmivshmT2Yiuq3kumV/tF3/HB/ub9oz9/eb38ydObMf+PG7586Zc77M3Ln33Pn9GkSEEnkIOA5MBdYCXxcJ1lCy2BPA/Er7AjCjSLBxheUks5NRoQAjRQOWJfZ14C2vb7ho0DLEPgl8VkJcc7EP4B6oUrAWewj35EdctwxuKXYb0K7sLcDbhvHNxC4GNiu7H9hqGB+Mgk0HDnp9CyvfTxnE/x8Lsd8CE5S9HPil0i48t2qKiu0mvirtAD4vGDORImI3AK8p+0fgnWJy6pNX7AJgl7JvAC8Ul1OfPGIfobp6WgTcLqwmhTxiv8OVfhHrgDM2cuoTKvYjYJ6y9wO7zdSkECJ2NbBe2T8Dq0zVpJBV7FzgE2UP48ZpCP8F+lcxPoPPg7hxqukABgJztQBLAs8BV8ndAo5lEdsLNCt7I27VysJE1W4FejKeV4u+tGHwIfC8sg8B2wMS3AqWlMwz9TaMS4hfiYu4pfVeQIIW4EtgZsA5AlzD7Tj0nelKEtvGaDES0QpcCkiqaQQaKkLSGAGeBU4CTZW+y8B0RMT/NIjIZYnTWcOvzM85L/8cEaGW41ee4/tjLLTLy/9udMx33OI59o6x0OVe/u/1ce34ouf4u4g0jaHQqV7+f0Xk4VpiW0TkrnIcFJFJY3xVz3pi232faFE4Snzp3YvbqswKeOL7gb8D/DXv4Zb0iD3AN1VeIrJPqhms0ZfGdRFZkOOKzvfinE/yJYeoenwRKLRJRIa8GE8k+Y8DPs5562oxId0lRjfxuuNN4Nck52gFezpHooj1wBuVdi/ZS8e1uLEZ0UN8A1pN4G2r9VmtbmFfxnPavFt/Q0TGp51n8ZJDFzaPk61GPuzZHcCdtJMsxP6h2o8Ck1P89xKvwrbiipZ0DIaBP/U8V8fXXyVPheSyuLJXPfuxBL9JuOJd83JIIguxA8BNZTcn+B3G1bURy3BFdmYsxP5DfPNYS+xm4r/cdOF2EEFYvezVQ8EXOxv3VjziCrAyTxIrsYOq3eIdO+bZL+VNYiX2T9WeptqfAlOUvQn4KW8SK7F6ro3m2aXACtV/AvigSBIrsUOqPYAbt/qHu2Ggs2gSK7G/qXYb8APxPf8ruBfOhciyjmehX7XneMf2AEcskpQxDDQXcDWqCVZi/0rob0/oz0UZU1fEGuC8UXzA7p8cjcT/T3AAeNUisMbqyo7g3tsOAadxc6w59wHtmnRa1KprRAAAAABJRU5ErkJggg==" alt=""></span><h2 class="e">技能水平</h2><span class="ctl handle dragsec" draggable="true" title="拖动板块">⠿</span><button class="ctl del secdel" data-act="delsection" title="删除该板块">×</button><div class="items"><div class="item skill"><span class="e">熟悉 Java 基础、集合与并发编程，了解 JVM 内存模型与性能调优</span><button class="ctl del" data-act="delentry" title="删除">×</button></div><div class="item skill"><span class="e">熟悉 Spring / Spring Boot / Spring Cloud，了解核心原理与源码</span><button class="ctl del" data-act="delentry" title="删除">×</button></div><div class="item skill"><span class="e">熟悉 MySQL，掌握索引优化、事务、主从复制与分库分表</span><button class="ctl del" data-act="delentry" title="删除">×</button></div><div class="item skill"><span class="e">熟悉 Redis，掌握缓存设计、分布式锁、持久化与集群方案</span><button class="ctl del" data-act="delentry" title="删除">×</button></div><div class="item skill"><span class="e">熟悉 RocketMQ / Kafka，了解消息可靠性与幂等消费设计</span><button class="ctl del" data-act="delentry" title="删除">×</button></div><div class="item skill"><span class="e">熟悉 Docker、Nginx，了解 CI/CD 与常见中间件</span><button class="ctl del" data-act="delentry" title="删除">×</button></div></div><button class="ctl add" data-act="addskill">＋ 添加技能</button><button class="ctl add" data-act="addsectionbullet">＋ 要点</button></section><section class="sec"><span class="badge"><img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACsAAAAxCAYAAABDEFA9AAABc2lDQ1BJQ0MgUHJvZmlsZQAAeJx1kc0rBGEcxz92idbKASU5zGHJYZUoOWoVFxx2V3m7zM6+qZkxzcwmuSoXB+UgLt4O/gOuypVSipTk7OjtIo3fY9RKPNMzv0/f5/n++s13IDJuGpZXOwyW7bvpsZQ2PTOr1T8So40ISdANz5nIjGb5d71dU6PqVa/q9f+9P1djvuAZUNMgPGg4ri8s0zC+5DuK14VbjbKeF94TTroyoPC50nMhPyguhfyi2M2mRyCiemqlH5z7wUbZtYR7hBOWWTG+51FfEi/YUxmpHbI78UgzRgqNHBUWMPHplWpLZn/7+r58kyyKx5C3wzKuOEqUxZsUtSJdC1KLohfkMVlWuf/O0ysO9Ifd4ymouw+C5y6o34SPjSB43w+CjwOI3sGpXfUvSk5Dr6JvVLXELjSvwvFZVcttwckatN86uqt/SVHZkWIRno6gaQZaLiE2F2b1fc7hDWRX5BddwPYOdMv95vlP/RtoCDZfAGEAAAMGSURBVHic7ZlPSBVBHMc/72kUGWYZEUGBkEJQdLA/FhRRQRTSLaQQjAwjMDwE0SnJQ3QJD3UqkAj/JOEtkpDqkkFoh6A6RZBphRjkKy379+2wuzlvfe/t6Lo+hfeFgTfz+87MZ387O8PbjUnCUCVwAtgBLCd7GgP6gTbgzv9WSV5p0/zUfUl5kojJyWw7cCwrObTTY2BfTNJet+KpC7gBDGSDytUaoBqoNdqqkNTuSznzqLQYbA9jkt4CJS59BfBsrtOYQeuYvMMjcWC1EUzMPU9GTQDedlUQB34awaVzz5NRS4zff+JMks93Kd/SWAZcBooigBgHmnAOgYyyhW0FtoUhClApsDHIZLsMukPjZFZPmvYktnwgZjFYI3APKAwJlUrfgadpYklstssAoG/GOLOkeLYBpqMcbFRaULD52G1dhcAFoDgChm/AVeBDkNF26+oADoeEyqTtwO4gk+0y+BSOJVDDNibbfbYW6AXWAr9nSpRm/hHglq3ZVi0zoZlNLajdIAcblRYU7HQesCPAqggYEjjvKgIPJ9sT7BpQHxIqk24DNSnak9hsl8Gm0DizML7tcVsFXAJWhCFKozHgSprYjP4pDANnwhDNhhbUbpCDjUo52KiUg41KOdioZANbCtRNc9zTJL+1DtJJYFegS9Jn44tIue9ryX5Jo26s1eLrSpGkR67/paQSiz7NxvzHfbH1kv66sYQfdqdhPK+pei5pQ5pJKyS99/kTkirT+FdK6kkxR7PhKTHH8sPmu6ZOo21A0l2jPi7poG/iGt+EnZJ+GfVzPn+5pCEj3iXphVF/ImmZ602Z2a9ybkOv0emBpGK3U7WkCSPWIGmRkm/jR0kHXP8WSa+NWIekxZKO+i6swfXHXY+nAUmn3DGnwP7wDdKoqbeuTFK/4Rk0fncbF+aVPDlr3ZOZzTdKXnZeqfdxeAlKoKkalLQnxSBmuenr0xTgP+vzd8nJcjr/Zkmv/GBIeifnQRiV8xm/IGBir9TJyfIhS/9WSX2SLlr6kXRd0heXb+gfk46Km7bGUgYAAAAASUVORK5CYII=" alt=""></span><h2 class="e">自我评价</h2><span class="ctl handle dragsec" draggable="true" title="拖动板块">⠿</span><button class="ctl del secdel" data-act="delsection" title="删除该板块">×</button><p class="eval e">5 年 Java 后端开发经验，编程基础扎实，具备良好的工程习惯与代码规范；善于沟通与团队协作，能独立负责核心模块；对技术有热情，持续学习并乐于分享。</p><button class="ctl add" data-act="addsectionbullet">＋ 要点</button></section></div><button class="ctl add addsection" data-act="addsection">＋ 添加板块</button>
+  </article>
+</div>
+
+<input type="file" id="photoInput" accept="image/*" hidden>
+<div id="guide">
+  <div class="g-txt"><b>欢迎使用简历编辑器</b><span>点【编辑】修改内容 · 要点里写「标签：值」会自动对齐成列 · 更多见【? 使用说明】</span></div>
+  <button class="g-btn" data-close="guide">知道了</button>
+</div>
+<div class="modal-mask" id="help">
+  <div class="modal-card">
+    <div class="modal-hd">功能使用说明<button class="modal-x" data-close="help">×</button></div>
+    <div class="modal-bd">
+      <ol>
+        <li><b>编辑内容</b>：点顶部【编辑】进入编辑模式，直接点任意文字修改，改完点【完成】。改动自动保存到本机。</li>
+        <li><b>板块（一级标题）</b>：编辑模式下，板块右上角 <span class="grip">⠿</span> 拖动排序、<span class="xx">×</span> 删除；板块底部【＋ 要点】加要点；时间轴末尾【＋ 添加板块】新增板块。</li>
+        <li><b>要点</b>：右侧 <span class="grip">⠿</span> 在同一列表内拖动排序、<span class="xx">×</span> 删除。</li>
+        <li><b>要点「标签」排版</b>：在要点里输入 <code>标签：内容</code>（中文「：」或英文「:」都可以），冒号前的一小段文字会渲染成<b>标签样式</b>（主题色底）。同一行可写多个标签，例如 <code>公司：星辰科技　职位：Java 工程师　时间：2021.07-至今</code>；同一板块内，各要点的第 1 / 2 / 3… 个标签会<b>按位置自动对齐成列</b>（标签较少的行自动补空列）。纯数字冒号（如 <code>12:30</code>）不会被当作标签。</li>
+        <li><b>行内标记</b>：要点支持 <code>**加粗**</code> <code>*斜体*</code> <code>`代码`</code> <code>==高亮==</code> <code>~~删除线~~</code>，失焦后自动渲染。</li>
+        <li><b>照片 / 主题色</b>：编辑模式下可【更换照片】；顶部取色器更换主题色。</li>
+        <li><b>打印 / 导出</b>：【打印 / PDF】输出 A4；【导出 HTML】得到可独立分发的单文件。</li>
+        <li><b>保存 / 重置</b>：改动自动保存到本机浏览器；【重置】恢复初始内容。</li>
+      </ol>
+    </div>
+  </div>
+</div>
+
+
+<template id="tmpl-work"><div class="item">
+  <div class="row"><div class="left"><b class="e">公司名称</b> <span class="role e">职位</span></div>
+  <span class="time e">时间</span><button class="ctl del" data-act="delentry" title="删除">×</button></div>
+  <ul class="bul"><li class="bul-item"><span class="ctl handle dragli" draggable="true" title="拖动要点">⠿</span><span class="txt e">工作内容</span><button class="ctl del" data-act="delbullet" title="删除">×</button></li></ul>
+  <button class="ctl add" data-act="addbullet">＋ 要点</button></div></template>
+<template id="tmpl-project"><div class="item">
+  <div class="row"><div class="left"><b class="e">项目名称</b></div>
+  <span class="time e">时间</span><button class="ctl del" data-act="delentry" title="删除">×</button></div>
+  <p class="desc"><span class="k">项目描述：</span><span class="e">项目描述</span></p>
+  <p class="desc"><span class="k">技术栈：</span><span class="e mono">技术栈</span></p>
+  <ul class="bul"><li class="bul-item"><span class="ctl handle dragli" draggable="true" title="拖动要点">⠿</span><span class="txt e">主要工作</span><button class="ctl del" data-act="delbullet" title="删除">×</button></li></ul>
+  <button class="ctl add" data-act="addbullet">＋ 要点</button></div></template>
+<template id="tmpl-skill"><div class="item skill"><span class="e">技能描述</span><button class="ctl del" data-act="delentry" title="删除">×</button></div></template>
+<template id="tmpl-bullet"><li class="bul-item"><span class="ctl handle dragli" draggable="true" title="拖动要点">⠿</span><span class="txt e">要点内容</span><button class="ctl del" data-act="delbullet" title="删除">×</button></li></template>
+<template id="tmpl-section"><section class="sec">
+  <span class="badge"><span class="dot"></span></span>
+  <h2 class="e">新板块</h2>
+  <span class="ctl handle dragsec" draggable="true" title="拖动板块">⠿</span>
+  <button class="ctl del secdel" data-act="delsection" title="删除该板块">×</button>
+  <ul class="bul"><li class="bul-item"><span class="ctl handle dragli" draggable="true" title="拖动要点">⠿</span><span class="txt e">要点内容</span><button class="ctl del" data-act="delbullet" title="删除">×</button></li></ul>
+  <button class="ctl add" data-act="addsectionbullet">＋ 要点</button></section></template>
+
+
+<script>
+(function(){
+  var ACCENT_DEFAULT = '#E2AB37';
+  var KEY = 'resume-ganxiang-v1';
+  var resume = document.getElementById('resume');
+  var htmlDefault = resume.innerHTML;
+  var accent = ACCENT_DEFAULT;
+
+  function applyAccent(c){
+    accent = c;
+    document.documentElement.style.setProperty('--accent', c);
+    var r=parseInt(c.slice(1,3),16),g=parseInt(c.slice(3,5),16),b=parseInt(c.slice(5,7),16);
+    document.documentElement.style.setProperty('--accent-soft','rgba('+r+','+g+','+b+',.28)');
+    var inp=document.getElementById('accent'); if(inp) inp.value=c;
+  }
+  function editable(on){
+    resume.querySelectorAll('.e').forEach(function(el){
+      if(on) el.setAttribute('contenteditable','true'); else el.removeAttribute('contenteditable');
+    });
+  }
+  function cleanHTML(){
+    var c = resume.cloneNode(true);
+    c.querySelectorAll('[contenteditable]').forEach(function(el){el.removeAttribute('contenteditable');});
+    return c.innerHTML;
+  }
+  function save(){
+    try{ localStorage.setItem(KEY, JSON.stringify({html:cleanHTML(), accent:accent})); }catch(e){}
+  }
+  function stripCE(){ resume.querySelectorAll('[contenteditable]').forEach(function(el){el.removeAttribute('contenteditable');}); }
+
+  // restore
+  try{
+    var s = JSON.parse(localStorage.getItem(KEY)||'null');
+    if(s && s.html){ resume.innerHTML = s.html; } 
+    if(s && s.accent){ applyAccent(s.accent); } else { applyAccent(ACCENT_DEFAULT); }
+  }catch(e){ applyAccent(ACCENT_DEFAULT); }
+
+  // toolbar
+  document.getElementById('btnEdit').onclick = function(){
+    document.body.classList.toggle('editing');
+    var on = document.body.classList.contains('editing');
+    editable(on);
+    this.textContent = on ? '完成' : '编辑';
+  };
+  document.getElementById('btnSave').onclick = function(){ save(); this.textContent='已保存 ✓'; var b=this; setTimeout(function(){b.textContent='保存';},1200); };
+  document.getElementById('btnReset').onclick = function(){
+    if(!confirm('恢复为初始内容？（你的修改将被清除）')) return;
+    localStorage.removeItem(KEY);
+    resume.innerHTML = htmlDefault; applyAccent(ACCENT_DEFAULT);
+    if(document.body.classList.contains('editing')) editable(true);
+  };
+  document.getElementById('btnPrint').onclick = function(){ window.print(); };
+  document.getElementById('btnExport').onclick = function(){
+    stripCE();
+    var css = document.getElementById('css').textContent;
+    var clone = resume.cloneNode(true);
+    clone.querySelectorAll('[contenteditable]').forEach(function(el){el.removeAttribute('contenteditable');});
+    var out = '<!doctype html>\n<html lang="zh-CN">\n<head>\n<meta charset="utf-8">\n'
+      + '<meta name="viewport" content="width=device-width, initial-scale=1">\n'
+      + '<title>网页简历</title>\n<style>'+css+'</style>\n</head>\n'
+      + '<body style="--accent:'+accent+'">\n<div class="wrap">'+clone.outerHTML+'</div>\n</body>\n</html>';
+    var blob = new Blob([out], {type:'text/html;charset=utf-8'});
+    var a=document.createElement('a');
+    a.href=URL.createObjectURL(blob); a.download='网页简历.html';
+    document.body.appendChild(a); a.click(); a.remove();
+    if(document.body.classList.contains('editing')) editable(true);
+  };
+
+  var acc=document.getElementById('accent');
+  acc.value=accent;
+  acc.oninput=function(){ applyAccent(this.value); save(); };
+
+  // photo
+  var pi=document.getElementById('photoInput');
+  document.getElementById('changePhoto').onclick=function(){ pi.click(); };
+  pi.onchange=function(){
+    var f=this.files[0]; if(!f) return;
+    var r=new FileReader();
+    r.onload=function(){ document.getElementById('photoImg').src=r.result; save(); };
+    r.readAsDataURL(f);
+  };
+
+  // add / delete (event delegation)
+  resume.addEventListener('click', function(e){
+    var b=e.target.closest('button[data-act]'); if(!b) return;
+    e.preventDefault();
+    var act=b.dataset.act;
+    function tpl(id){ return document.getElementById(id).content.firstElementChild.cloneNode(true); }
+    if(act==='addwork'){ b.parentElement.querySelector('.items').appendChild(tpl('tmpl-work')); }
+    else if(act==='addproject'){ b.parentElement.querySelector('.items').appendChild(tpl('tmpl-project')); }
+    else if(act==='addskill'){ b.parentElement.querySelector('.items').appendChild(tpl('tmpl-skill')); }
+    else if(act==='addbullet'){ var ul=b.previousElementSibling; if(ul&&ul.classList.contains('bul')) ul.appendChild(tpl('tmpl-bullet')); }
+    else if(act==='delentry'){ b.closest('.item').remove(); }
+    else if(act==='delbullet'){ b.closest('li').remove(); }
+    else if(act==='delsection'){ b.closest('.sec').remove(); }
+    else if(act==='addsectionbullet'){ var sec=b.closest('.sec'); var ul=sec.querySelector(':scope > ul.bul'); if(!ul){ ul=document.createElement('ul'); ul.className='bul'; sec.insertBefore(ul, b); } ul.appendChild(tpl('tmpl-bullet')); }
+    else if(act==='addsection'){ var tl=resume.querySelector('.timeline'); if(tl) tl.appendChild(tpl('tmpl-section')); }
+    layoutAll();
+    if(document.body.classList.contains('editing')) editable(true);
+    save();
+  });
+
+  var t; resume.addEventListener('input', function(){ clearTimeout(t); t=setTimeout(save, 500); });
+
+  function escHtml(s){ return String(s).replace(/[&<>]/g, function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;'}[c];}); }
+  function mdInline(s){
+    s = s.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+    s = s.replace(/\*([^*]+)\*/g, '<em>$1</em>');
+    s = s.replace(/`([^`]+)`/g, '<code>$1</code>');
+    s = s.replace(/==([^=]+)==/g, '<mark>$1</mark>');
+    s = s.replace(/~~([^~]+)~~/g, '<del>$1</del>');
+    return s;
+  }
+  // 把要点解析成 {pre, cells:[{lbl,val}]}：一行内可含多个「标签：值」
+  function parsePairs(raw){
+    var s = escHtml(raw);
+    var re = /([A-Za-z\u4e00-\u9fa5][^：:\s]{0,9}[：:])/;
+    var toks = s.split(re);
+    var pre = toks[0] || '', cells = [];
+    for(var i=1;i<toks.length;i+=2){
+      var label=toks[i], val=toks[i+1]||'';
+      if(/^[0-9]+[：:]$/.test(label)){ if(cells.length) cells[cells.length-1].val += label+val; else pre += label+val; }
+      else cells.push({lbl:label, val:val});
+    }
+    return {pre:pre, cells:cells};
+  }
+  // 把同一板块内各要点的第 1/2/3… 个标签按位置对齐成列
+  function layoutSection(sec){
+    var ul = sec.querySelector(':scope > ul.bul');
+    if(!ul) return;
+    var lis = [].filter.call(ul.children, function(x){ return x.tagName==='LI'; });
+    var items = [];
+    lis.forEach(function(li){
+      var t = li.querySelector('.txt'); if(!t) return;
+      var raw = (t.dataset.md!=null ? t.dataset.md : t.textContent);
+      items.push({t:t, raw:raw, p:parsePairs(raw)});
+    });
+    var maxc = 0;
+    items.forEach(function(x){ if(x.p.cells.length>maxc) maxc = x.p.cells.length; });
+    var grid = maxc >= 2;
+    ul.classList.toggle('cols', grid);
+    ul.style.setProperty('--cols', grid ? maxc : 1);
+    items.forEach(function(x){
+      x.t.dataset.md = x.raw;
+      if(!grid){ x.t.innerHTML = mdInline(escHtml(x.raw)); return; }
+      var cells = [];
+      if(x.p.pre && x.p.pre.trim()) cells.push({lbl:'', val:x.p.pre});
+      x.p.cells.forEach(function(c){ cells.push({lbl:c.lbl, val:c.val}); });
+      if(!cells.length) cells.push({lbl:'', val:escHtml(x.raw)});
+      if(cells.length===1 && !cells[0].lbl){ x.t.innerHTML = '<span class="cell wide">'+mdInline(cells[0].val)+'</span>'; return; }
+      var html='';
+      for(var k=0;k<maxc;k++){
+        var c = cells[k];
+        if(c) html += '<span class="cell'+(c.lbl?'':' nolbl')+'">'+(c.lbl?'<span class="lbl">'+c.lbl+'</span>':'')+mdInline(c.val)+'</span>';
+        else html += '<span class="cell empty"></span>';
+      }
+      x.t.innerHTML = html;
+    });
+  }
+  function layoutAll(){ [].forEach.call(resume.querySelectorAll('.sec'), layoutSection); }
+  resume.addEventListener('focusin', function(e){
+    var el=e.target.closest&&e.target.closest('.txt');
+    if(el && el.dataset.md!=null){ el.textContent = el.dataset.md; }
+  });
+  resume.addEventListener('focusout', function(e){
+    var el=e.target.closest&&e.target.closest('.txt');
+    if(el){ el.dataset.md = el.textContent; var sec=el.closest('.sec'); if(sec) layoutSection(sec); save(); }
+  });
+
+  var dragSec=null, dragLi=null;
+  resume.addEventListener('dragstart', function(e){
+    var hs=e.target.closest&&e.target.closest('.dragsec');
+    var hl=e.target.closest&&e.target.closest('.dragli');
+    if(hs){ dragSec=hs.closest('.sec'); dragSec.classList.add('dragging'); try{e.dataTransfer.effectAllowed='move'; e.dataTransfer.setData('text/plain','s');}catch(_){} }
+    else if(hl){ dragLi=hl.closest('li'); dragLi.classList.add('dragging'); try{e.dataTransfer.effectAllowed='move'; e.dataTransfer.setData('text/plain','l');}catch(_){} }
+  });
+  resume.addEventListener('dragover', function(e){
+    if(dragSec){ var t=e.target.closest&&e.target.closest('.sec'); if(t&&t!==dragSec){ e.preventDefault(); var r=t.getBoundingClientRect(); if(e.clientY<r.top+r.height/2) t.parentNode.insertBefore(dragSec,t); else t.parentNode.insertBefore(dragSec,t.nextSibling); } }
+    else if(dragLi){ var li=e.target.closest&&e.target.closest('li'); if(li&&li!==dragLi&&li.parentNode===dragLi.parentNode){ e.preventDefault(); var r2=li.getBoundingClientRect(); if(e.clientY<r2.top+r2.height/2) li.parentNode.insertBefore(dragLi,li); else li.parentNode.insertBefore(dragLi,li.nextSibling); } }
+  });
+  resume.addEventListener('drop', function(e){ if(dragSec||dragLi){ e.preventDefault(); } });
+  resume.addEventListener('dragend', function(){
+    if(dragSec){ dragSec.classList.remove('dragging'); dragSec=null; }
+    if(dragLi){ dragLi.classList.remove('dragging'); dragLi=null; }
+    layoutAll(); save();
+  });
+
+  // 使用说明弹窗 & 首次引导
+  document.getElementById('btnHelp').onclick=function(){ document.getElementById('help').classList.add('on'); };
+  [].forEach.call(document.querySelectorAll('[data-close]'), function(b){
+    b.onclick=function(){
+      var id=this.getAttribute('data-close'), m=document.getElementById(id);
+      if(m) m.classList.remove('on');
+      if(id==='guide'){ var g=document.getElementById('guide'); if(g) g.classList.remove('show'); try{ localStorage.setItem('resume-guide-v1','1'); }catch(e){} }
+    };
+  });
+  document.getElementById('help').addEventListener('click', function(e){ if(e.target===this) this.classList.remove('on'); });
+  try{ if(!localStorage.getItem('resume-guide-v1')){ var gd=document.getElementById('guide'); if(gd) gd.classList.add('show'); } }catch(e){}
+
+  layoutAll();
+})();
+</script>
+
+</body>
+</html>
