@@ -99,6 +99,7 @@ body.gridlines ul.bul.cols li{padding-left:16px;}
 .modal-bd code{background:#f2f3f5;border:1px solid #e3e5e8;border-radius:4px;padding:0 5px;font-family:Consolas,Menlo,monospace;font-size:12.5px;}
 .modal-bd .grip{color:#999;}
 .modal-bd .xx{color:#c0392b;}
+.toast{position:fixed;left:50%;bottom:84px;transform:translateX(-50%);background:#111827;color:#fff;padding:8px 16px;border-radius:8px;z-index:200;font-size:13px;box-shadow:0 6px 18px rgba(0,0,0,.3);}
 #changePhoto{border:0;background:#eef1f5;color:#666;border-radius:14px;padding:4px 12px;
   margin-top:10px;font-size:12.5px;cursor:pointer;font-family:inherit;}
 body.editing .e{outline:1px dashed var(--accent-soft);outline-offset:2px;border-radius:3px;min-width:20px;}
@@ -137,6 +138,8 @@ body.editing .e:focus{outline:2px solid var(--accent);background:#fffdf6;}
   <button id="btnEdit">编辑</button>
   <button id="btnSave">保存</button>
   <button id="btnReset">重置</button>
+  <button id="btnLink">复制链接</button>
+  <button id="btnNew">新建</button>
   <span class="sep"></span>
   <button id="btnPrint">打印 / PDF</button>
   <button id="btnExport">导出 HTML</button>
@@ -169,6 +172,7 @@ body.editing .e:focus{outline:2px solid var(--accent);background:#fffdf6;}
         <li><b>行内标记</b>：要点支持 <code>**加粗**</code> <code>*斜体*</code> <code>`代码`</code> <code>==高亮==</code> <code>~~删除线~~</code>，失焦后自动渲染。</li>
         <li><b>照片 / 主题色</b>：编辑模式下可【更换照片】；顶部取色器更换主题色。</li>
         <li><b>打印 / 导出</b>：【打印 / PDF】输出 A4；【导出 HTML】得到可独立分发的单文件。</li>
+        <li><b>独立链接（多人/多标签互不覆盖）</b>：每份简历有唯一链接（地址栏里的 <code>#doc=…</code>），数据按链接隔离。用【复制链接】保存或分享这份简历；【新建】开始一份全新的。</li>
         <li><b>保存 / 重置</b>：改动自动保存到本机浏览器；【重置】恢复初始内容。</li>
       </ol>
     </div>
@@ -202,7 +206,13 @@ body.editing .e:focus{outline:2px solid var(--accent);background:#fffdf6;}
 <script>
 (function(){
   var ACCENT_DEFAULT = '#E2AB37';
-  var KEY = 'resume-ganxiang-v1';
+  var LEGACY = 'resume-ganxiang-v1';
+  function _uid(){ return Math.random().toString(36).slice(2,10); }
+  var _m = /doc=([A-Za-z0-9_-]+)/.exec(location.hash || '');
+  var DOCID = _m ? _m[1] : _uid();
+  var _hadHash = !!_m;
+  if(!_hadHash){ try{ history.replaceState(null,'', location.pathname + location.search + '#doc=' + DOCID); }catch(e){ location.hash = 'doc=' + DOCID; } }
+  var KEY = 'resume-builder:' + DOCID;
   var resume = document.getElementById('resume');
   var htmlDefault = resume.innerHTML;
   var accent = ACCENT_DEFAULT;
@@ -229,9 +239,13 @@ body.editing .e:focus{outline:2px solid var(--accent);background:#fffdf6;}
   }
   function stripCE(){ resume.querySelectorAll('[contenteditable]').forEach(function(el){el.removeAttribute('contenteditable');}); }
 
-  // restore
+  // restore（每份简历用独立链接/独立存储，互不覆盖）
   try{
     var s = JSON.parse(localStorage.getItem(KEY)||'null');
+    if(!s && !_hadHash){
+      var lg = localStorage.getItem(LEGACY);
+      if(lg){ s = JSON.parse(lg); localStorage.setItem(KEY, lg); localStorage.removeItem(LEGACY); }
+    }
     if(s && s.html){ resume.innerHTML = s.html; } 
     if(s && s.accent){ applyAccent(s.accent); } else { applyAccent(ACCENT_DEFAULT); }
   }catch(e){ applyAccent(ACCENT_DEFAULT); }
@@ -249,6 +263,20 @@ body.editing .e:focus{outline:2px solid var(--accent);background:#fffdf6;}
     localStorage.removeItem(KEY);
     resume.innerHTML = htmlDefault; applyAccent(ACCENT_DEFAULT);
     if(document.body.classList.contains('editing')) editable(true);
+  };
+  function toast(msg){
+    var t=document.createElement('div'); t.className='toast'; t.textContent=msg;
+    document.body.appendChild(t); setTimeout(function(){ if(t.parentNode) t.parentNode.removeChild(t); }, 1900);
+  }
+  document.getElementById('btnLink').onclick = function(){
+    var url=location.href;
+    if(navigator.clipboard && navigator.clipboard.writeText){ navigator.clipboard.writeText(url).then(function(){ toast('简历链接已复制，请保存或分享'); }, function(){ window.prompt('复制此链接保存或分享：', url); }); }
+    else { window.prompt('复制此链接保存或分享：', url); }
+  };
+  document.getElementById('btnNew').onclick = function(){
+    if(!confirm('新建一份简历？当前内容请先用【复制链接】保存，否则无法找回。')) return;
+    var id=_uid(); try{ history.replaceState(null,'', location.pathname + location.search + '#doc=' + id); }catch(e){ location.hash='doc='+id; }
+    location.reload();
   };
   document.getElementById('btnPrint').onclick = function(){ window.print(); };
   document.getElementById('btnExport').onclick = function(){
