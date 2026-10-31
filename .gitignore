@@ -1,0 +1,19 @@
+# OS / Editor
+Thumbs.db
+desktop.ini
+.DS_Store
+*.swp
+.idea/
+.vscode/
+
+# Node (if tooling is added later)
+node_modules/
+npm-debug.log*
+
+# Build / temp
+/dist/
+*.log
+
+# 本地自媒体内容产物（不提交、不推送）
+/outputs/
+outputs/
