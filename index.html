@@ -688,6 +688,18 @@ body.editing .e:focus{outline:2px solid var(--accent);background:#fffdf6;}
     });
     return sections.length? sections : null;
   }
+  function _normCJK(t){
+    var cjk='\\u4e00-\\u9fa5';
+    var punct='，。、：；！？（）《》【】「」“”‘’';
+    for(var i=0;i<3;i++){
+      t=t.replace(new RegExp('(['+cjk+'])[ \\t]+(['+cjk+'])','g'),'$1$2');
+      t=t.replace(new RegExp('(['+cjk+'])[ \\t]+(['+punct+'])','g'),'$1$2');
+      t=t.replace(new RegExp('(['+punct+'])[ \\t]+(['+cjk+'])','g'),'$1$2');
+    }
+    t=t.replace(/(\d)[ \t]+([.\-\/:])/g,'$1$2').replace(/([.\-\/:])[ \t]+(\d)/g,'$1$2');
+    t=t.replace(/([.\-\/:])[ \t]+(至今|现在|今)/g,'$1$2');
+    return t;
+  }
   function scoreHeading(t, ctx){
     var s=0;
     if(ctx.def) s+=3;
@@ -718,6 +730,7 @@ body.editing .e:focus{outline:2px solid var(--accent);background:#fffdf6;}
     lines = lines.filter(function(l){ return l.text && l.text.trim(); });
     lines.forEach(function(l){
       l.text = l.text.replace(/\u00a0/g,' ').replace(/\s+/g,' ').trim();
+      l.text = _normCJK(l.text);
       l.text = l.text.replace(/^[\s·•●▪◦\-–—、.]+/, '').trim();
     });
     var seen={}, clean=[];
@@ -817,6 +830,20 @@ body.editing .e:focus{outline:2px solid var(--accent);background:#fffdf6;}
         sections = (contact.length ? [{title:'基本信息', def:SEC_DEF[0], items:contact, forceBasic:true}] : []).concat(blocks);
       }
     }
+    // 合并同类别重复板块（OCR 噪声/重复标题导致）
+    var _merged=[], _byKey={};
+    sections.forEach(function(s){
+      var k = (s.def && s.def.key) ? s.def.key : null;
+      if(k && k!=='other' && _byKey[k]){
+        var t=_byKey[k];
+        t.items = t.items.concat(s.items);
+        if(t.lines && s.lines) t.lines = t.lines.concat(s.lines);
+      } else {
+        if(k && k!=='other') _byKey[k]=s;
+        _merged.push(s);
+      }
+    });
+    sections=_merged;
     return {name:name, title:title, sections:sections};
   }
 
