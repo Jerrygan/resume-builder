@@ -551,11 +551,21 @@ body.editing .e:focus{outline:2px solid var(--accent);background:#fffdf6;}
       });
       Object.keys(rows).map(Number).sort(function(a,b){return b-a;}).forEach(function(y){
         var its=rows[y].sort(function(a,b){return a.transform[4]-b.transform[4];});
-        var text=its.map(function(i){return i.str;}).join('').replace(/\s+$/,'');
+        var size=0, bold=false, x0=Infinity, text='';
+        for(var k=0;k<its.length;k++){
+          var it=its[k];
+          var hh=Math.abs(it.transform[3])||0; if(hh>size) size=hh;
+          if(/bold|black|heavy/i.test(it.fontName||'')) bold=true;
+          if(it.transform[4]<x0) x0=it.transform[4];
+          if(k===0){ text+=it.str; continue; }
+          var prev=its[k-1];
+          var gap=it.transform[4]-(prev.transform[4]+(prev.width||0));
+          var needSpace = gap>(size*0.5) && /[A-Za-z0-9]$/.test(prev.str||'') && /^[A-Za-z0-9]/.test(it.str||'');
+          text += (needSpace?' ':'') + it.str;
+        }
+        text=text.replace(/\s+$/,'');
         if(!text.trim()) return;
-        var size=0, bold=false, x0=Infinity;
-        its.forEach(function(i){ var h=Math.abs(i.transform[3])||0; if(h>size)size=h; if(/bold|black|heavy/i.test(i.fontName||'')) bold=true; if(i.transform[4]<x0) x0=i.transform[4]; });
-        out.push({text:text, size:size, bold:bold, x:(x0===Infinity?0:x0), y:y, page:p});
+        out.push({text:text, size:size, bold:bold, x:(x0===Infinity?0:x0), y:y, page:p, sole:(its.length===1)});
       });
     }
     return out;
@@ -629,12 +639,39 @@ body.editing .e:focus{outline:2px solid var(--accent);background:#fffdf6;}
     var sections=[];
     blocks.forEach(function(b,idx){
       var first=b[0], d=matchHeading(first.text);
-      var title='', items=b.map(function(l){return l.text;});
-      if(d && first.text.length<=16 && !/[：:]/.test(first.text)){ title=first.text; items=items.slice(1); }
+      var title='', blines=b.slice();
+      if(d && !/[：:]/.test(first.text)){ title=first.text; blines=b.slice(1); }
+      var items=blines.map(function(l){return l.text;});
       if(!title){ var cat=classify(items); if(cat){ title=CATNAME[cat]; d=defByKey(cat); } else { title='板块 '+(idx+1); } }
-      if(items.length) sections.push({title:title, def:d||null, items:items});
+      if(items.length) sections.push({title:title, def:d||null, items:items, lines:blines});
     });
     return sections.length? sections : null;
+  }
+  function scoreHeading(t, ctx){
+    var s=0;
+    if(ctx.def) s+=3;
+    if(ctx.sole) s+=2;
+    if(ctx.body && ctx.size && ctx.size>=ctx.body*1.15) s+=2;
+    if(ctx.bold) s+=1;
+    if(ctx.gap!=null && ctx.lineGap && ctx.gap>=ctx.lineGap*1.4) s+=2;
+    if(/[0-9０-９]/.test(t)) s-=5;
+    if(/[：:]/.test(t)) s-=5;
+    if(/[，。；;]$/.test(t)) s-=3;
+    if(/^[·•●▪◦\-–—、]/.test(t)) s-=3;
+    return s;
+  }
+  function parseEntryHead(h){
+    var timeRe=/((?:19|20)\d{2}\s*[.\-\/年]?\s*\d{0,2}\s*(?:-|–|—|~|至|到)\s*(?:(?:19|20)\d{2}\s*[.\-\/年]?\s*\d{0,2}|至今|现在|今))|(?:(?:19|20)\d{2}\s*[.\-\/年]\s*\d{1,2})/;
+    var m=(h||'').match(timeRe);
+    var time='', rest=h||'';
+    if(m){ time=m[0].trim(); rest=rest.replace(m[0],' '); }
+    rest=rest.replace(/\s+/g,' ').trim();
+    var roleRe=/((?:高级|资深|首席|前端|后端|全栈|Java|Python|测试|运维|算法|产品|项目|技术)?\s*(?:工程师|经理|主管|负责人|实习生|专员|总监|架构师|设计师|组长|开发|助理|顾问|CTO|CEO))/;
+    var rm=rest.match(roleRe);
+    var org='', role='';
+    if(rm){ role=rm[0].trim(); org=rest.slice(0,rm.index).trim(); if(!org){ org=rest.slice(rm.index+rm[0].length).trim(); } }
+    else { org=rest; }
+    return {time:time, org:org, role:role};
   }
   function toModel(lines){
     lines = lines.filter(function(l){ return l.text && l.text.trim(); });
@@ -672,21 +709,31 @@ body.editing .e:focus{outline:2px solid var(--accent);background:#fffdf6;}
     var used={}; if(name) used[name]=1; if(title) used[title]=1;
 
     var BASIC_RE=/(年龄|岁|现居|居住地|籍贯|户籍|民族|政治面貌|党员|团员|身高|体重|婚姻|电话|手机|邮箱|E-?mail|微信|QQ)/i;
+    var gaps=[]; for(var gi=1; gi<lines.length; gi++){ if(lines[gi-1].y!=null && lines[gi].y!=null){ var gg=lines[gi-1].y-lines[gi].y; if(gg>0) gaps.push(gg); } }
+    gaps.sort(function(a,b){return a-b;}); var lineGap = gaps.length? gaps[Math.floor(gaps.length/2)] : 0;
     var sections=[], before=[], basicExtra=[], cur=null;
     for(var i=0;i<lines.length;i++){
       var l=lines[i];
       if(used[l.text]) continue;
       var def = matchHeading(l.text);
-      var big = body && l.size && l.size>=body*1.22 && l.text.length<=22;
-      var boldHead = l.bold && l.text.length<=10 && !/[:：]$/.test(l.text);
-      var headStyle = l.heading && l.text.length<=22;
-      var isHead = def || (i>0 && (big || headStyle || boldHead));
+      var hasPos = l.y!=null;
+      var gapAbove = (i>0 && l.y!=null && lines[i-1].y!=null) ? (lines[i-1].y - l.y) : null;
+      var isHead;
+      if(hasPos){
+        var sc = scoreHeading(l.text, {def:def, sole:l.sole, size:l.size, body:body, bold:l.bold, gap:gapAbove, lineGap:lineGap});
+        isHead = (def && sc>=5) || (!def && sc>=7 && l.text.length<=12 && (l.bold || (l.size && body && l.size>=body*1.2)));
+      } else {
+        var big = body && l.size && l.size>=body*1.22 && l.text.length<=22;
+        var boldHead = l.bold && l.text.length<=10 && !/[:：]$/.test(l.text) && !/[0-9０-９，。；;]/.test(l.text);
+        var headStyle = l.heading && l.text.length<=22;
+        isHead = def || (i>0 && (big || headStyle || boldHead));
+      }
       if(isHead){
         var _tt=l.text; if(def && def.key==='work' && /实践/.test(l.text)) _tt='工作经验';
-        cur={title:_tt, def:def, items:[]}; sections.push(cur);
+        cur={title:_tt, def:def, items:[], lines:[]}; sections.push(cur);
       } else if(cur){
         if(cur.title!=='基本信息' && BASIC_RE.test(l.text) && l.text.length<=40) basicExtra.push(l.text);
-        else cur.items.push(l.text);
+        else { cur.items.push(l.text); cur.lines.push(l); }
       } else { before.push(l.text); }
     }
     if(before.length || basicExtra.length){
@@ -743,22 +790,35 @@ body.editing .e:focus{outline:2px solid var(--accent);background:#fffdf6;}
     return html;
   }
   function bulletLi(t){ return '<li class="bul-item"><span class="ctl handle dragli" draggable="true" title="拖动要点">⠿</span><span class="txt e">'+esc(t)+'</span><button class="ctl del" data-act="delbullet">×</button></li>'; }
-  function groupEntries(items){
+  function groupEntries(items, lines){
     if(!items || !items.length) return null;
+    var hasPos = !!(lines && lines.length===items.length && lines.every(function(l){ return l && l.y!=null; }));
+    var lineGap=0;
+    if(hasPos){ var gs=[]; for(var i=1;i<lines.length;i++){ var g=lines[i-1].y-lines[i].y; if(g>0) gs.push(g); } gs.sort(function(a,b){return a-b;}); lineGap=gs.length?gs[Math.floor(gs.length/2)]:0; }
     function isHead(t){ return /^\s*(19|20)\d{2}/.test(t) || /(19|20)\d{2}\s*[.\-\/年]?\s*(\d{1,2})?\s*(-|–|—|~|至|到)\s*((19|20)\d{2}|至今|现在|今)/.test(t); }
     var entries=[], cur=null;
-    items.forEach(function(t){
-      if(isHead(t)){ cur={h:t, b:[]}; entries.push(cur); }
+    for(var i=0;i<items.length;i++){
+      var t=items[i], newByGap=false;
+      if(hasPos && lineGap && i>0){ var g=lines[i-1].y-lines[i].y; if(g>lineGap*1.5) newByGap=true; }
+      var hd=isHead(t);
+      if(hd || (newByGap && t.length<=30)){ cur={h:t, b:[]}; entries.push(cur); }
       else if(cur){ cur.b.push(t); }
       else { cur={h:'', b:[t]}; entries.push(cur); }
-    });
+    }
     var heads = entries.filter(function(e){ return e.h; }).length;
     return heads>=2 ? entries : null;
   }
   function renderEntries(entries){
     return entries.map(function(e){
-      var s='<div class="item">';
-      s+='<div class="row"><div class="left">'+(e.h?('<b class="e">'+esc(e.h)+'</b>'):'')+'</div><span class="time"></span><button class="ctl del" data-act="delentry" title="删除">×</button></div>';
+      var s='<div class="item">', left='', time='';
+      if(e.h){
+        var f=parseEntryHead(e.h);
+        time=f.time||'';
+        if(f.org){ left+='<b class="e">'+esc(f.org)+'</b>'; }
+        if(f.role){ left+=' <span class="role e">'+esc(f.role)+'</span>'; }
+        if(!left && !f.time){ left='<b class="e">'+esc(e.h)+'</b>'; }
+      }
+      s+='<div class="row"><div class="left">'+left+'</div><span class="time e">'+esc(time)+'</span><button class="ctl del" data-act="delentry" title="删除">×</button></div>';
       s+='<ul class="bul">'+e.b.map(bulletLi).join('')+'</ul>';
       s+='<button class="ctl add" data-act="addbullet">＋ 要点</button>';
       s+='</div>';
@@ -781,7 +841,7 @@ body.editing .e:focus{outline:2px solid var(--accent);background:#fffdf6;}
       if(isBasic){
         h.push(renderBasics(s.items));
       } else {
-        var entries = groupEntries(s.items);
+        var entries = groupEntries(s.items, s.lines);
         if(entries && entries.length>=2){
           h.push(renderEntries(entries));
         } else {
