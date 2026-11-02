@@ -59,6 +59,7 @@
   - 跳过 `w:del`；表格行优先；文本框按锚点位置插入阅读流。
   - 读 `styles.xml` 获取字号/加粗；图片从 `word/media/*` + rels 映射。
 - **PDF**：pdf.js `getTextContent()`，获取 `str + transform`（x/y/size/bold）。
+- **PSD**：ag-psd 读图层，取文本图层（文字/字号/加粗/坐标）按视觉顺序排序；头像取最大非文字图层；文字已栅格化的 PSD 无法提取。
 - **图片型 PDF / 扫描件**：文字层不足 → 进入降级（见 §8）。
 
 ### 5.2 规范化与行合并
