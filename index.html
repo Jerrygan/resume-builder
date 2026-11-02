@@ -99,6 +99,8 @@ body.gridlines ul.bul.cols li{padding-left:16px;}
 .ocrbar{position:fixed;left:50%;bottom:120px;transform:translateX(-50%);z-index:100;background:#fff7e6;border:1px solid #f0c36d;color:#7a5c12;padding:10px 14px;border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.18);display:flex;gap:10px;align-items:center;max-width:92vw;font-size:13px;}
 .ocrbar button{font-family:inherit;font-size:13px;border:0;border-radius:8px;padding:6px 12px;cursor:pointer;background:var(--accent);color:#1f2937;font-weight:700;}
 .ocrbar #btnOcrClose{background:#eee;color:#555;font-weight:400;}
+#labelBar{bottom:170px;}
+.txt .lbl{display:inline-block;background:var(--accent-soft);color:#7a5c12;font-weight:700;border-radius:5px;padding:0 7px;margin-right:3px;}
 #changePhoto{border:0;background:#eef1f5;color:#666;border-radius:14px;padding:4px 12px;
   margin-top:10px;font-size:12.5px;cursor:pointer;font-family:inherit;}
 body.editing .e{outline:1px dashed var(--accent-soft);outline-offset:2px;border-radius:3px;min-width:20px;}
@@ -146,6 +148,7 @@ body.editing .e:focus{outline:2px solid var(--accent);background:#fffdf6;}
   <button id="btnReset">重置</button>
   <button id="btnLink">复制链接</button>
   <button id="btnNew">新建</button>
+  <button id="btnLabel">标签：原文</button>
   <span class="sep"></span>
   <button id="btnPrint">打印 / PDF</button>
   <button id="btnExport">导出 HTML</button>
@@ -172,6 +175,11 @@ body.editing .e:focus{outline:2px solid var(--accent);background:#fffdf6;}
   <button id="btnOcr">OCR 识别</button>
   <button id="btnOcrClose">忽略</button>
 </div>
+<div id="labelBar" class="ocrbar" style="display:none">
+  <span id="labelMsg">检测到「标签：值」格式，是否转换为标签样式？</span>
+  <button id="btnLabelYes">转换</button>
+  <button id="btnLabelNo">保持原文</button>
+</div>
 
 <div id="guide">
   <div class="g-txt"><b>欢迎使用简历编辑器</b><span>点【编辑】改内容 · 点【上传简历】把旧简历(PDF/Word/PSD)转成网页 · 要点里写「标签：值」会自动对齐成列 · 更多见【? 使用说明】</span></div>
@@ -187,6 +195,7 @@ body.editing .e:focus{outline:2px solid var(--accent);background:#fffdf6;}
         <li><b>板块（一级标题）</b>：编辑模式下，板块右上角 <span class="grip">⠿</span> 拖动排序、<span class="xx">×</span> 删除；板块底部【＋ 要点】加要点；时间轴末尾【＋ 添加板块】新增板块。</li>
         <li><b>要点</b>：右侧 <span class="grip">⠿</span> 在同一列表内拖动排序、<span class="xx">×</span> 删除。</li>
         <li><b>要点「标签」排版</b>：在要点里输入 <code>标签：内容</code>（中文「：」或英文「:」都可以），冒号前的一小段文字会渲染成<b>标签样式</b>（主题色底）。同一行可写多个标签，例如 <code>公司：星辰科技　职位：Java 工程师　时间：2021.07-至今</code>；同一板块内，各要点的第 1 / 2 / 3… 个标签会<b>按位置自动对齐成列</b>（标签较少的行自动补空列）。纯数字冒号（如 <code>12:30</code>）不会被当作标签。</li>
+        <li><b>标签样式</b>：检测到「标签：值」格式时会提示是否转换；也可用工具栏「标签：原文/已转换」随时切换（选择按简历保存）。</li>
         <li><b>行内标记</b>：要点支持 <code>**加粗**</code> <code>*斜体*</code> <code>`代码`</code> <code>==高亮==</code> <code>~~删除线~~</code>，失焦后自动渲染。</li>
         <li><b>照片 / 主题色</b>：编辑模式下可【更换照片】；顶部取色器更换主题色。</li>
         <li><b>打印 / 导出</b>：【打印 / PDF】输出 A4；【导出 HTML】得到可独立分发的单文件。</li>
@@ -24472,6 +24481,7 @@ module.exports = ZStream;
   var KEY = 'resume-builder:' + DOCID;
   var resume = document.getElementById('resume');
   var lastPdfBuf=null, lastPdfPhoto=null, lastPdfFile=null;
+  var labelMode=''; /* ''=未选择, 'convert'=转标签, 'plain'=保持原文 */
   var htmlDefault = resume.innerHTML;
 
   function esc(s){return (s==null?'':String(s)).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
@@ -24493,7 +24503,7 @@ module.exports = ZStream;
     return c.innerHTML;
   }
   function save(){
-    try{ localStorage.setItem(KEY, JSON.stringify({html:cleanHTML(), accent:getComputedStyle(document.documentElement).getPropertyValue('--accent').trim()})); }catch(e){}
+    try{ localStorage.setItem(KEY, JSON.stringify({html:cleanHTML(), accent:getComputedStyle(document.documentElement).getPropertyValue('--accent').trim(), label:labelMode})); }catch(e){}
   }
   function stripCE(){ resume.querySelectorAll('[contenteditable]').forEach(function(el){el.removeAttribute('contenteditable');}); }
 
@@ -25125,6 +25135,30 @@ module.exports = ZStream;
   function _withTimeout(p, ms, msg){ return Promise.race([ p, new Promise(function(_,rej){ setTimeout(function(){ rej(new Error(msg)); }, ms); }) ]); }
   function showOcr(msg){ var b=document.getElementById('ocrBar'); if(msg) document.getElementById('ocrMsg').textContent=msg; b.style.display='flex'; }
   function hideOcr(){ var b=document.getElementById('ocrBar'); if(b) b.style.display='none'; }
+
+  function _countLabels(){
+    var n = 0;
+    var list = resume.querySelectorAll('ul.bul .txt');
+    for(var i=0;i<list.length;i++){
+      var t=list[i];
+      var raw=(t.dataset.md!=null?t.dataset.md:t.textContent)||'';
+      raw=_normCJK(raw);
+      var m=raw.match(/[A-Za-z\u4e00-\u9fa5][^：:\s]{0,9}[：:]/g);
+      if(m) n+=m.length;
+    }
+    return n;
+  }
+  function hideLabelBar(){ var b=document.getElementById('labelBar'); if(b) b.style.display='none'; }
+  function maybePromptLabel(){
+    var lb=document.getElementById('btnLabel');
+    if(lb) lb.textContent = (labelMode==='convert') ? '标签：已转换' : '标签：原文';
+    if(labelMode){ hideLabelBar(); return; }
+    var n=_countLabels();
+    if(n>=2){
+      document.getElementById('labelMsg').textContent='检测到 '+n+' 处「标签：值」格式，是否转换为标签样式？';
+      document.getElementById('labelBar').style.display='flex';
+    } else hideLabelBar();
+  }
   async function ocrPdf(buf){
     await _loadScript('https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js');
     if(typeof Tesseract==='undefined') throw new Error('OCR 库加载失败（需联网）');
@@ -25244,8 +25278,10 @@ module.exports = ZStream;
       }catch(e){}
       resume.innerHTML=renderResume(model, photo);
       if(document.body.classList.contains('editing')) editable(true);
+      layoutAll();
       save();
       status('已生成可编辑简历（共 '+model.sections.length+' 个板块），点「编辑」即可修改', 'ok');
+      maybePromptLabel();
       if(/\.pdf$/i.test(f.name)){
         lastPdfBuf=buf; lastPdfPhoto=photo;
         if(_missingHeadings(lines)){ showOcr('检测到图片型/标题缺失的 PDF，结构可能不准，可尝试本地 OCR（首次联网下载模型，不上传文件）'); }
@@ -25266,6 +25302,7 @@ module.exports = ZStream;
       if(lg){ st=JSON.parse(lg); localStorage.setItem(KEY, lg); localStorage.removeItem(LEGACY); }
     }
     if(st && st.html){ resume.innerHTML=st.html; }
+    labelMode = (st && st.label) ? st.label : '';
     applyAccent(st && st.accent ? st.accent : '#E2AB37');
   }catch(e){ applyAccent('#E2AB37'); }
 
@@ -25299,6 +25336,9 @@ module.exports = ZStream;
     location.reload();
   };
   document.getElementById('btnOcrClose').onclick=function(){ hideOcr(); };
+  document.getElementById('btnLabelYes').onclick=function(){ labelMode='convert'; hideLabelBar(); layoutAll(); save(); };
+  document.getElementById('btnLabelNo').onclick=function(){ labelMode='plain'; hideLabelBar(); layoutAll(); save(); };
+  document.getElementById('btnLabel').onclick=function(){ var eff=labelMode||'convert'; labelMode=(eff==='plain')?'convert':'plain'; this.textContent=(labelMode==='convert')?'标签：已转换':'标签：原文'; layoutAll(); save(); };
   document.getElementById('btnOcr').onclick=async function(){
     if(!lastPdfBuf && !lastPdfFile) return;
     var btn=this; btn.disabled=true; btn.textContent='识别中…';
@@ -25398,16 +25438,25 @@ module.exports = ZStream;
     lis.forEach(function(li){
       var t = li.querySelector('.txt'); if(!t) return;
       var raw = (t.dataset.md!=null ? t.dataset.md : t.textContent);
+      raw = _normCJK(raw || '');
       items.push({t:t, raw:raw, p:parsePairs(raw)});
     });
     var maxc = 0;
     items.forEach(function(x){ if(x.p.cells.length>maxc) maxc = x.p.cells.length; });
-    var grid = maxc >= 2;
+    var convert = (labelMode === 'convert');
+    var grid = convert && maxc >= 2;
     ul.classList.toggle('cols', grid);
     ul.style.setProperty('--cols', grid ? maxc : 1);
     items.forEach(function(x){
       x.t.dataset.md = x.raw;
-      if(!grid){ x.t.innerHTML = mdInline(escHtml(x.raw)); return; }
+      if(!convert){ x.t.innerHTML = mdInline(escHtml(x.raw)); return; }
+      if(maxc === 1){
+        var h = '';
+        if(x.p.pre && x.p.pre.trim()) h += mdInline(escHtml(x.p.pre));
+        x.p.cells.forEach(function(c){ h += '<span class="lbl">'+c.lbl+'</span>'+mdInline(c.val); });
+        if(!h) h = mdInline(escHtml(x.raw));
+        x.t.innerHTML = h; return;
+      }
       var cells = [];
       if(x.p.pre && x.p.pre.trim()) cells.push({lbl:'', val:x.p.pre});
       x.p.cells.forEach(function(c){ cells.push({lbl:c.lbl, val:c.val}); });
@@ -25472,8 +25521,9 @@ module.exports = ZStream;
   document.getElementById('help').addEventListener('click', function(e){ if(e.target===this) this.classList.remove('on'); });
   try{ if(!localStorage.getItem('resume-guide-v1')){ var gd=document.getElementById('guide'); if(gd) gd.classList.add('show'); } }catch(e){}
 
-  window.__rb = { handleFile: handleFile, parseDocx: parseDocx, parsePdf: parsePdf, toModel: toModel, renderResume: renderResume, matchHeading: matchHeading, extractDocxPhoto: extractDocxPhoto, extractPdfPhoto: extractPdfPhoto, ocr: ocrPdf, _pdfBufLen: function(){ try{ return lastPdfBuf? lastPdfBuf.slice(0).byteLength : -1; }catch(e){ return -2; } } };
+  window.__rb = { handleFile: handleFile, parseDocx: parseDocx, parsePdf: parsePdf, toModel: toModel, renderResume: renderResume, matchHeading: matchHeading, extractDocxPhoto: extractDocxPhoto, extractPdfPhoto: extractPdfPhoto, ocr: ocrPdf, layoutAll: layoutAll, maybePromptLabel: maybePromptLabel, _pdfBufLen: function(){ try{ return lastPdfBuf? lastPdfBuf.slice(0).byteLength : -1; }catch(e){ return -2; } } };
   layoutAll();
+  maybePromptLabel();
   status('提示：点「上传简历」或拖入 PDF / Word / PSD 自动生成 · 要点里写多个「标签：值」会按位置对齐成列');
 })();
 
