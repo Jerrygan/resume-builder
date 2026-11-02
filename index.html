@@ -553,9 +553,9 @@ body.editing .e:focus{outline:2px solid var(--accent);background:#fffdf6;}
         var its=rows[y].sort(function(a,b){return a.transform[4]-b.transform[4];});
         var text=its.map(function(i){return i.str;}).join('').replace(/\s+$/,'');
         if(!text.trim()) return;
-        var size=0, bold=false;
-        its.forEach(function(i){ var h=Math.abs(i.transform[3])||0; if(h>size)size=h; if(/bold|black|heavy/i.test(i.fontName||'')) bold=true; });
-        out.push({text:text, size:size, bold:bold});
+        var size=0, bold=false, x0=Infinity;
+        its.forEach(function(i){ var h=Math.abs(i.transform[3])||0; if(h>size)size=h; if(/bold|black|heavy/i.test(i.fontName||'')) bold=true; if(i.transform[4]<x0) x0=i.transform[4]; });
+        out.push({text:text, size:size, bold:bold, x:(x0===Infinity?0:x0), y:y, page:p});
       });
     }
     return out;
@@ -573,9 +573,68 @@ body.editing .e:focus{outline:2px solid var(--accent);background:#fffdf6;}
   ];
   function matchHeading(t){
     t=(t||'').trim();
-    if(!t || t.length>18) return null;
+    if(!t || t.length>16) return null;
+    if(/[：:]/.test(t)) return null;
+    if(/^[0-9０-９]/.test(t)) return null;
+    if(/[，。；;]$/.test(t)) return null;
     for(var i=0;i<SEC_DEF.length;i++){ if(SEC_DEF[i].re.test(t)) return SEC_DEF[i]; }
     return null;
+  }
+  function layoutSections(lines, body){
+    var arr = lines.filter(function(l){ return l.y!=null && l.text; });
+    if(!arr.length) return null;
+    var byPage = {};
+    arr.forEach(function(l){ var pg=l.page||1; (byPage[pg]=byPage[pg]||[]).push(l); });
+    var blocks = [];
+    function avg(a){ return a.reduce(function(x,y){return x+y;},0)/a.length; }
+    Object.keys(byPage).map(Number).sort(function(a,b){return a-b;}).forEach(function(pg){
+      var ls = byPage[pg];
+      var xs = ls.map(function(l){return l.x;}).sort(function(a,b){return a-b;});
+      var centers = [], group = [xs[0]];
+      for(var i=1;i<xs.length;i++){ if(xs[i]-xs[i-1] > 40){ centers.push(avg(group)); group=[]; } group.push(xs[i]); }
+      if(group.length) centers.push(avg(group));
+      if(!centers.length) centers=[0];
+      var cols = centers.map(function(){ return []; });
+      ls.forEach(function(l){ var bi=0,bd=1e9; centers.forEach(function(c,ci){ var d=Math.abs(l.x-c); if(d<bd){bd=d;bi=ci;} }); cols[bi].push(l); });
+      cols.forEach(function(colLines){
+        colLines.sort(function(a,b){ return b.y - a.y; });
+        var gaps=[]; for(var i=1;i<colLines.length;i++){ gaps.push(colLines[i-1].y - colLines[i].y); }
+        var sorted=gaps.slice().sort(function(a,b){return a-b;});
+        var med = sorted.length? sorted[Math.floor(sorted.length/2)] : 0;
+        var thr = Math.max(med*1.8, 12);
+        var cur=[];
+        colLines.forEach(function(l,i){
+          if(i>0){ var g=colLines[i-1].y - l.y; if(g>thr && cur.length){ blocks.push(cur); cur=[]; } }
+          cur.push(l);
+        });
+        if(cur.length) blocks.push(cur);
+      });
+    });
+    var CATNAME={edu:'教育背景',work:'工作经验',proj:'项目经验',skill:'专业技能',eval:'自我评价'};
+    var CATRE={
+      edu:/大学|学院|学校|学历|本科|硕士|博士|专科|大专|专业|毕业/,
+      work:/公司|任职|在职|入职|职位|工程师|经理|主管|负责|主导|团队|工作/,
+      proj:/项目|系统|平台|架构|技术栈|模块|接口/,
+      skill:/熟悉|掌握|精通|了解|熟练|技能/,
+      eval:/自我评价|认真|踏实|沟通|学习能力|责任心/
+    };
+    function classify(items){
+      var sc={edu:0,work:0,proj:0,skill:0,eval:0};
+      items.forEach(function(t){ for(var k in CATRE){ if(CATRE[k].test(t)) sc[k]++; } });
+      var best='', bv=1;
+      ['edu','work','proj','skill','eval'].forEach(function(k){ if(sc[k]>bv){ bv=sc[k]; best=k; } });
+      return best;
+    }
+    function defByKey(k){ for(var i=0;i<SEC_DEF.length;i++){ if(SEC_DEF[i].key===k) return SEC_DEF[i]; } return null; }
+    var sections=[];
+    blocks.forEach(function(b,idx){
+      var first=b[0], d=matchHeading(first.text);
+      var title='', items=b.map(function(l){return l.text;});
+      if(d && first.text.length<=16 && !/[：:]/.test(first.text)){ title=first.text; items=items.slice(1); }
+      if(!title){ var cat=classify(items); if(cat){ title=CATNAME[cat]; d=defByKey(cat); } else { title='板块 '+(idx+1); } }
+      if(items.length) sections.push({title:title, def:d||null, items:items});
+    });
+    return sections.length? sections : null;
   }
   function toModel(lines){
     lines = lines.filter(function(l){ return l.text && l.text.trim(); });
@@ -640,6 +699,22 @@ body.editing .e:focus{outline:2px solid var(--accent);background:#fffdf6;}
         return t;
       });
       sections.unshift({title:'基本信息', def:SEC_DEF[0], items:items, forceBasic:true});
+    }
+    var semCount = sections.filter(function(s){ return s.def && s.def.key!=='basic'; }).length;
+    var hasPos = lines.some(function(l){ return l.y!=null; });
+    if(semCount < 2 && hasPos){
+      var remain = lines.filter(function(l){
+        if(used[l.text]) return false;
+        if(l.text.length<=40 && BASIC_RE.test(l.text)) return false;
+        if(/[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/.test(l.text)) return false;
+        if(/^[+\d][\d\s\-()]{6,}$/.test(l.text.trim())) return false;
+        return true;
+      });
+      var blocks = layoutSections(remain, body);
+      if(blocks && blocks.length){
+        var basics = sections.filter(function(s){ return s.def && s.def.key==='basic'; });
+        sections = basics.concat(blocks);
+      }
     }
     return {name:name, title:title, sections:sections};
   }
