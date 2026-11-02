@@ -96,6 +96,9 @@ body.gridlines ul.bul.cols li{padding-left:16px;}
 .modal-bd .grip{color:#999;}
 .modal-bd .xx{color:#c0392b;}
 .toast{position:fixed;left:50%;bottom:84px;transform:translateX(-50%);background:#111827;color:#fff;padding:8px 16px;border-radius:8px;z-index:200;font-size:13px;box-shadow:0 6px 18px rgba(0,0,0,.3);}
+.ocrbar{position:fixed;left:50%;bottom:120px;transform:translateX(-50%);z-index:100;background:#fff7e6;border:1px solid #f0c36d;color:#7a5c12;padding:10px 14px;border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.18);display:flex;gap:10px;align-items:center;max-width:92vw;font-size:13px;}
+.ocrbar button{font-family:inherit;font-size:13px;border:0;border-radius:8px;padding:6px 12px;cursor:pointer;background:var(--accent);color:#1f2937;font-weight:700;}
+.ocrbar #btnOcrClose{background:#eee;color:#555;font-weight:400;}
 #changePhoto{border:0;background:#eef1f5;color:#666;border-radius:14px;padding:4px 12px;
   margin-top:10px;font-size:12.5px;cursor:pointer;font-family:inherit;}
 body.editing .e{outline:1px dashed var(--accent-soft);outline-offset:2px;border-radius:3px;min-width:20px;}
@@ -128,7 +131,7 @@ body.editing .e:focus{outline:2px solid var(--accent);background:#fffdf6;}
   body{padding:0;}
   .wrap{display:block;}
   #resume.page{width:auto;min-height:0;box-shadow:none;border-radius:0;padding:12mm 14mm;margin:0;}
-  #toolbar,.ctl,#changePhoto,#status,#drop,#guide,.modal-mask{display:none!important;}
+  #toolbar,.ctl,#changePhoto,#status,#drop,#guide,.modal-mask,#ocrBar{display:none!important;}
   .sec,.item{break-inside:avoid;}
 }
 
@@ -164,6 +167,11 @@ body.editing .e:focus{outline:2px solid var(--accent);background:#fffdf6;}
 <input type="file" id="photoInput" accept="image/*" hidden>
 <div id="drop">松开鼠标，自动生成可编辑简历</div>
 <div id="status"></div>
+<div id="ocrBar" class="ocrbar" style="display:none">
+  <span id="ocrMsg">检测到图片型/标题缺失的 PDF，结构可能不准。可尝试本地 OCR（首次需联网下载识别模型，不上传文件）。</span>
+  <button id="btnOcr">OCR 识别</button>
+  <button id="btnOcrClose">忽略</button>
+</div>
 
 <div id="guide">
   <div class="g-txt"><b>欢迎使用简历编辑器</b><span>点【编辑】改内容 · 点【上传简历】把旧简历(PDF/Word)转成网页 · 要点里写「标签：值」会自动对齐成列 · 更多见【? 使用说明】</span></div>
@@ -274,6 +282,7 @@ body.editing .e:focus{outline:2px solid var(--accent);background:#fffdf6;}
   if(!_hadHash){ try{ history.replaceState(null,'', location.pathname + location.search + '#doc=' + DOCID); }catch(e){ location.hash = 'doc=' + DOCID; } }
   var KEY = 'resume-builder:' + DOCID;
   var resume = document.getElementById('resume');
+  var lastPdfBuf=null, lastPdfPhoto=null;
   var htmlDefault = resume.innerHTML;
 
   function esc(s){return (s==null?'':String(s)).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
@@ -890,6 +899,43 @@ body.editing .e:focus{outline:2px solid var(--accent);background:#fffdf6;}
   }
 
   // ============ 文件处理 ============
+  function _missingHeadings(lines){
+    var txt=lines.map(function(l){return l.text;}).join('\n');
+    var core=['教育','工作','项目','技能','自我评价','荣誉','基本信息','个人信息'];
+    var hit=0; core.forEach(function(k){ if(txt.indexOf(k)>=0) hit++; });
+    return hit<=2;
+  }
+  function _loadScript(src){ return new Promise(function(res,rej){ var s=document.createElement('script'); s.src=src; s.onload=function(){res();}; s.onerror=function(){rej(new Error('脚本加载失败'));}; document.head.appendChild(s); }); }
+  function showOcr(msg){ var b=document.getElementById('ocrBar'); if(msg) document.getElementById('ocrMsg').textContent=msg; b.style.display='flex'; }
+  function hideOcr(){ var b=document.getElementById('ocrBar'); if(b) b.style.display='none'; }
+  async function ocrPdf(buf){
+    await _loadScript('https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js');
+    if(typeof Tesseract==='undefined') throw new Error('OCR 库加载失败（需联网）');
+    initWorker();
+    var pdf=await pdfjsLib.getDocument({data:buf}).promise;
+    var worker=await Tesseract.createWorker('chi_sim+eng', 1, { logger:function(m){ if(m&&m.status){ status('OCR：'+m.status+(m.progress?(' '+Math.round(m.progress*100)+'%'):'')); } } });
+    var out=[];
+    for(var p=1;p<=pdf.numPages;p++){
+      var page=await pdf.getPage(p);
+      var vp=page.getViewport({scale:2});
+      var canvas=document.createElement('canvas'); canvas.width=Math.round(vp.width); canvas.height=Math.round(vp.height);
+      await page.render({canvasContext:canvas.getContext('2d'), viewport:vp}).promise;
+      var res=await worker.recognize(canvas);
+      var d=res.data||{}, lns=d.lines||[];
+      if(lns.length){
+        lns.forEach(function(ln){
+          var t=(ln.text||'').replace(/\s+$/,'').trim(); if(!t) return;
+          var bb=ln.bbox||{x0:0,y0:0,y1:0};
+          out.push({text:t, size:(bb.y1-bb.y0)||0, bold:false, x:(bb.x0||0), y:(vp.height-(bb.y0||0)), page:p, sole:true});
+        });
+      } else {
+        (d.text||'').split(/\r?\n/).forEach(function(t){ t=t.trim(); if(t) out.push({text:t, size:0, bold:false, page:p}); });
+      }
+      status('OCR：第 '+p+'/'+pdf.numPages+' 页完成');
+    }
+    await worker.terminate();
+    return out;
+  }
   async function handleFile(f){
     status('正在解析：'+f.name+' …');
     try{
@@ -898,7 +944,11 @@ body.editing .e:focus{outline:2px solid var(--accent);background:#fffdf6;}
       else if(/\.docx$/i.test(f.name)) lines=await parseDocx(buf);
       else if(/\.doc$/i.test(f.name)) throw new Error('旧版 .doc 不支持，请另存为 .docx 或 PDF');
       else throw new Error('仅支持 PDF / Word(.docx)');
-      if(!lines.length) throw new Error('未提取到文字（可能是扫描件/图片型 PDF）');
+      if(/\.pdf$/i.test(f.name)){ lastPdfBuf=buf; }
+      if(!lines.length){
+        if(/\.pdf$/i.test(f.name)){ lastPdfPhoto=null; showOcr('未提取到文字层（扫描件/图片型 PDF），可尝试本地 OCR（首次需联网下载模型，不上传文件）'); status('未提取到文字层，可点击「OCR 识别」','err'); return; }
+        throw new Error('未提取到文字（可能是扫描件/图片型 PDF）');
+      }
       var model=toModel(lines);
       var photo=null;
       try{
@@ -909,6 +959,11 @@ body.editing .e:focus{outline:2px solid var(--accent);background:#fffdf6;}
       if(document.body.classList.contains('editing')) editable(true);
       save();
       status('已生成可编辑简历（共 '+model.sections.length+' 个板块），点「编辑」即可修改', 'ok');
+      if(/\.pdf$/i.test(f.name)){
+        lastPdfBuf=buf; lastPdfPhoto=photo;
+        if(_missingHeadings(lines)){ showOcr('检测到图片型/标题缺失的 PDF，结构可能不准，可尝试本地 OCR（首次联网下载模型，不上传文件）'); }
+        else { hideOcr(); }
+      } else { hideOcr(); }
     }catch(e){
       console.error(e);
       status('解析失败：'+(e.message||e), 'err');
@@ -955,6 +1010,22 @@ body.editing .e:focus{outline:2px solid var(--accent);background:#fffdf6;}
     if(!confirm('新建一份简历？当前内容请先用【复制链接】保存，否则无法找回。')) return;
     var id=_uid(); try{ history.replaceState(null,'', location.pathname + location.search + '#doc=' + id); }catch(e){ location.hash='doc='+id; }
     location.reload();
+  };
+  document.getElementById('btnOcrClose').onclick=function(){ hideOcr(); };
+  document.getElementById('btnOcr').onclick=async function(){
+    if(!lastPdfBuf) return;
+    var btn=this; btn.disabled=true; btn.textContent='识别中…';
+    try{
+      var lines=await ocrPdf(lastPdfBuf);
+      if(!lines.length) throw new Error('OCR 未识别到文字');
+      var model=toModel(lines);
+      var photo=lastPdfPhoto; if(!photo){ try{ photo=await extractPdfPhoto(lastPdfBuf); }catch(e){} }
+      resume.innerHTML=renderResume(model, photo);
+      if(document.body.classList.contains('editing')) editable(true);
+      layoutAll(); hideOcr(); save();
+      status('OCR 完成：已生成 '+model.sections.length+' 个板块，点「编辑」可修改','ok');
+    }catch(e){ status('OCR 失败：'+(e.message||e),'err'); }
+    btn.disabled=false; btn.textContent='OCR 识别';
   };
   document.getElementById('btnPrint').onclick=function(){ window.print(); };
   document.getElementById('btnExport').onclick=function(){
