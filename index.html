@@ -563,20 +563,20 @@ body.editing .e:focus{outline:2px solid var(--accent);background:#fffdf6;}
 
   // ============ 结构识别 ============
   var SEC_DEF=[
-    {re:/(基本信息|个人信息|个人资料|基本资料|基本概况|个人概况|联系方式)/, icon:'basic', key:'basic'},
-    {re:/(教育背景|教育经历|学习经历|教育)/, icon:'edu', key:'edu'},
-    {re:/(项目经验|项目经历|项目实践|项目介绍|项目|project)/i, icon:'proj', key:'proj'},
-    {re:/(工作经验|工作经历|工作实践|实践经历|职业经历|工作履历|职业发展|校园经历|实习经历|实习|employment|experience)/i, icon:'work', key:'work'},
-    {re:/(专业技能|技能特长|专业能力|个人能力|技能|skills?)/i, icon:'skill', key:'skill'},
-    {re:/(自我评价|个人评价|自我描述|个人总结|自我介绍|自我鉴定|个人优势|about|summary|profile)/i, icon:'eval', key:'eval'},
-    {re:/(荣誉|奖项|获奖|奖学金|证书|表彰|awards?|honors?|certificat)/i, icon:'star', key:'other'}
+    {re:/(基本信息|个人信息|个人资料|基本资料|基本概况|个人概况|联系方式|个人档案)/, icon:'basic', key:'basic'},
+    {re:/(教育背景|教育经历|学习经历|学历教育|教育|education)/i, icon:'edu', key:'edu'},
+    {re:/(项目经验|项目经历|项目实践|项目介绍|项目作品|作品集|作品|项目|portfolio|project)/i, icon:'proj', key:'proj'},
+    {re:/(工作经验|工作经历|工作实践|实践经历|职业经历|工作履历|职业发展|任职经历|校园经历|实习经历|实习|employment|experience)/i, icon:'work', key:'work'},
+    {re:/(专业技能|技能特长|专业能力|个人能力|技能|技术栈|skills?|expertise)/i, icon:'skill', key:'skill'},
+    {re:/(自我评价|个人评价|自我描述|个人总结|自我介绍|自我鉴定|个人优势|职业规划|about|summary|profile)/i, icon:'eval', key:'eval'},
+    {re:/(荣誉|奖项|获奖|奖学金|证书|资格|表彰|培训|awards?|honors?|certificat|training)/i, icon:'star', key:'other'}
   ];
   function matchHeading(t){
     t=(t||'').trim();
-    if(!t || t.length>16) return null;
-    if(/[：:]/.test(t)) return null;
-    if(/^[0-9０-９]/.test(t)) return null;
-    if(/[，。；;]$/.test(t)) return null;
+    if(!t || t.length>10) return null;
+    if(/[0-9０-９]/.test(t)) return null;
+    if(/[：:，。；;]/.test(t)) return null;
+    if(/^[·•●▪◦\-–—、]/.test(t)) return null;
     for(var i=0;i<SEC_DEF.length;i++){ if(SEC_DEF[i].re.test(t)) return SEC_DEF[i]; }
     return null;
   }
@@ -703,17 +703,29 @@ body.editing .e:focus{outline:2px solid var(--accent);background:#fffdf6;}
     var semCount = sections.filter(function(s){ return s.def && s.def.key!=='basic'; }).length;
     var hasPos = lines.some(function(l){ return l.y!=null; });
     if(semCount < 2 && hasPos){
-      var remain = lines.filter(function(l){
-        if(used[l.text]) return false;
-        if(l.text.length<=40 && BASIC_RE.test(l.text)) return false;
-        if(/[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/.test(l.text)) return false;
-        if(/^[+\d][\d\s\-()]{6,}$/.test(l.text.trim())) return false;
-        return true;
+      var isBasicLine=function(t){
+        if(t.length<=40 && BASIC_RE.test(t)) return true;
+        if(/[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/.test(t)) return true;
+        if(/^[+\d][\d\s\-()]{6,}$/.test(t.trim())) return true;
+        return false;
+      };
+      var contact=[], nonBasic=[];
+      lines.forEach(function(l){
+        if(used[l.text]) return;
+        if(isBasicLine(l.text)){
+          var t=l.text;
+          if(/^[^：:]{1,10}[：:]/.test(t)){ contact.push(t); }
+          else {
+            var em=t.match(/[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/);
+            if(em){ contact.push('邮箱：'+em[0]); }
+            else if(/^[+\d][\d\s\-()]{6,}$/.test(t.trim())){ contact.push('电话：'+t.trim()); }
+            else { contact.push(t); }
+          }
+        } else { nonBasic.push(l); }
       });
-      var blocks = layoutSections(remain, body);
+      var blocks = layoutSections(nonBasic, body);
       if(blocks && blocks.length){
-        var basics = sections.filter(function(s){ return s.def && s.def.key==='basic'; });
-        sections = basics.concat(blocks);
+        sections = (contact.length ? [{title:'基本信息', def:SEC_DEF[0], items:contact, forceBasic:true}] : []).concat(blocks);
       }
     }
     return {name:name, title:title, sections:sections};
@@ -729,6 +741,29 @@ body.editing .e:focus{outline:2px solid var(--accent);background:#fffdf6;}
     var html = rows.length? '<div class="basics">'+rows.join('')+'</div>' : '';
     if(plain.length) html += '<ul class="bul">'+plain.map(function(t){return '<li class="bul-item"><span class="ctl handle dragli" draggable="true" title="拖动要点">⠿</span><span class="txt e">'+esc(t)+'</span><button class="ctl del" data-act="delbullet">×</button></li>';}).join('')+'</ul>';
     return html;
+  }
+  function bulletLi(t){ return '<li class="bul-item"><span class="ctl handle dragli" draggable="true" title="拖动要点">⠿</span><span class="txt e">'+esc(t)+'</span><button class="ctl del" data-act="delbullet">×</button></li>'; }
+  function groupEntries(items){
+    if(!items || !items.length) return null;
+    function isHead(t){ return /^\s*(19|20)\d{2}/.test(t) || /(19|20)\d{2}\s*[.\-\/年]?\s*(\d{1,2})?\s*(-|–|—|~|至|到)\s*((19|20)\d{2}|至今|现在|今)/.test(t); }
+    var entries=[], cur=null;
+    items.forEach(function(t){
+      if(isHead(t)){ cur={h:t, b:[]}; entries.push(cur); }
+      else if(cur){ cur.b.push(t); }
+      else { cur={h:'', b:[t]}; entries.push(cur); }
+    });
+    var heads = entries.filter(function(e){ return e.h; }).length;
+    return heads>=2 ? entries : null;
+  }
+  function renderEntries(entries){
+    return entries.map(function(e){
+      var s='<div class="item">';
+      s+='<div class="row"><div class="left">'+(e.h?('<b class="e">'+esc(e.h)+'</b>'):'')+'</div><span class="time"></span><button class="ctl del" data-act="delentry" title="删除">×</button></div>';
+      s+='<ul class="bul">'+e.b.map(bulletLi).join('')+'</ul>';
+      s+='<button class="ctl add" data-act="addbullet">＋ 要点</button>';
+      s+='</div>';
+      return s;
+    }).join('');
   }
   function renderResume(model, photo){
     var h=[];
@@ -746,7 +781,12 @@ body.editing .e:focus{outline:2px solid var(--accent);background:#fffdf6;}
       if(isBasic){
         h.push(renderBasics(s.items));
       } else {
-        h.push('<ul class="bul">'+ s.items.map(function(t){return '<li class="bul-item"><span class="ctl handle dragli" draggable="true" title="拖动要点">⠿</span><span class="txt e">'+esc(t)+'</span><button class="ctl del" data-act="delbullet">×</button></li>';}).join('') +'</ul>');
+        var entries = groupEntries(s.items);
+        if(entries && entries.length>=2){
+          h.push(renderEntries(entries));
+        } else {
+          h.push('<ul class="bul">'+ s.items.map(bulletLi).join('') +'</ul>');
+        }
       }
       h.push('<button class="ctl add" data-act="addsectionbullet">＋ 要点</button>');
       h.push('</section>');
@@ -896,8 +936,10 @@ body.editing .e:focus{outline:2px solid var(--accent);background:#fffdf6;}
     return {pre:pre, cells:cells};
   }
   function layoutSection(sec){
-    var ul = sec.querySelector(':scope > ul.bul');
-    if(!ul) return;
+    var uls = sec.querySelectorAll('ul.bul');
+    [].forEach.call(uls, function(u){ layoutUl(u); });
+  }
+  function layoutUl(ul){
     var lis = [].filter.call(ul.children, function(x){ return x.tagName==='LI'; });
     var items = [];
     lis.forEach(function(li){
