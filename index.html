@@ -906,6 +906,7 @@ body.editing .e:focus{outline:2px solid var(--accent);background:#fffdf6;}
     return hit<=2;
   }
   function _loadScript(src){ return new Promise(function(res,rej){ var s=document.createElement('script'); s.src=src; s.onload=function(){res();}; s.onerror=function(){rej(new Error('脚本加载失败'));}; document.head.appendChild(s); }); }
+  function _withTimeout(p, ms, msg){ return Promise.race([ p, new Promise(function(_,rej){ setTimeout(function(){ rej(new Error(msg)); }, ms); }) ]); }
   function showOcr(msg){ var b=document.getElementById('ocrBar'); if(msg) document.getElementById('ocrMsg').textContent=msg; b.style.display='flex'; }
   function hideOcr(){ var b=document.getElementById('ocrBar'); if(b) b.style.display='none'; }
   async function ocrPdf(buf){
@@ -913,7 +914,14 @@ body.editing .e:focus{outline:2px solid var(--accent);background:#fffdf6;}
     if(typeof Tesseract==='undefined') throw new Error('OCR 库加载失败（需联网）');
     initWorker();
     var pdf=await pdfjsLib.getDocument({data:buf.slice(0)}).promise;
-    var worker=await Tesseract.createWorker('chi_sim+eng', 1, { logger:function(m){ if(m&&m.status){ status('OCR：'+m.status+(m.progress?(' '+Math.round(m.progress*100)+'%'):'')); } } });
+    status('OCR：准备模型…');
+    var worker=await _withTimeout(Tesseract.createWorker('chi_sim', 1, {
+      workerPath:'https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/worker.min.js',
+      corePath:'https://cdn.jsdelivr.net/npm/tesseract.js-core@5',
+      langPath:'https://cdn.jsdelivr.net/npm/@tesseract.js-data/chi_sim@1.0.0/4.0.0',
+      logger:function(m){ if(m&&m.status){ status('OCR：'+m.status+(m.progress?(' '+Math.round(m.progress*100)+'%'):'')); } },
+      errorHandler:function(e){ try{ console.error('[OCR]', e); status('OCR 错误：'+(e&&e.message?e.message:e),'err'); }catch(_){} }
+    }), 120000, 'OCR 模型下载超时（无法访问模型源，请稍后/换网络重试）');
     var out=[];
     for(var p=1;p<=pdf.numPages;p++){
       var page=await pdf.getPage(p);
@@ -1185,7 +1193,7 @@ body.editing .e:focus{outline:2px solid var(--accent);background:#fffdf6;}
   document.getElementById('help').addEventListener('click', function(e){ if(e.target===this) this.classList.remove('on'); });
   try{ if(!localStorage.getItem('resume-guide-v1')){ var gd=document.getElementById('guide'); if(gd) gd.classList.add('show'); } }catch(e){}
 
-  window.__rb = { handleFile: handleFile, parseDocx: parseDocx, parsePdf: parsePdf, toModel: toModel, renderResume: renderResume, matchHeading: matchHeading, extractDocxPhoto: extractDocxPhoto, extractPdfPhoto: extractPdfPhoto, _pdfBufLen: function(){ try{ return lastPdfBuf? lastPdfBuf.slice(0).byteLength : -1; }catch(e){ return -2; } } };
+  window.__rb = { handleFile: handleFile, parseDocx: parseDocx, parsePdf: parsePdf, toModel: toModel, renderResume: renderResume, matchHeading: matchHeading, extractDocxPhoto: extractDocxPhoto, extractPdfPhoto: extractPdfPhoto, ocr: ocrPdf, _pdfBufLen: function(){ try{ return lastPdfBuf? lastPdfBuf.slice(0).byteLength : -1; }catch(e){ return -2; } } };
   layoutAll();
   status('提示：点「上传简历」或拖入 PDF / Word 自动生成 · 要点里写多个「标签：值」会按位置对齐成列');
 })();
