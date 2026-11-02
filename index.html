@@ -539,34 +539,66 @@ body.editing .e:focus{outline:2px solid var(--accent);background:#fffdf6;}
     pdfjsLib.GlobalWorkerOptions.workerSrc = URL.createObjectURL(new Blob([src],{type:'application/javascript'}));
     workerReady=true;
   }
+  function _pdfBuildLines(items, pageNo){
+    var rows={};
+    items.forEach(function(it){ var k=Math.round(it.y/2)*2; (rows[k]=rows[k]||[]).push(it); });
+    var res=[];
+    Object.keys(rows).map(Number).sort(function(a,b){return b-a;}).forEach(function(y){
+      var its=rows[y].sort(function(a,b){return a.x-b.x;});
+      var size=0, bold=false, x0=Infinity, text='';
+      for(var k=0;k<its.length;k++){
+        var it=its[k];
+        if(it.size>size) size=it.size;
+        if(it.bold) bold=true;
+        if(it.x<x0) x0=it.x;
+        if(k===0){ text+=it.s; continue; }
+        var prev=its[k-1];
+        var gap=it.x-(prev.x+(prev.w||0));
+        var needSpace=gap>(size*0.5) && /[A-Za-z0-9]$/.test(prev.s||'') && /^[A-Za-z0-9]/.test(it.s||'');
+        text+=(needSpace?' ':'')+it.s;
+      }
+      text=text.replace(/\s+$/,'');
+      if(!text.trim()) return;
+      res.push({text:text, size:size, bold:bold, x:(x0===Infinity?0:x0), y:y, page:pageNo, sole:(its.length===1)});
+    });
+    return res;
+  }
+  function _detectColumnSplit(items, W){
+    if(items.length<12) return null;
+    var xs=items.map(function(i){return i.x;}).sort(function(a,b){return a-b;});
+    var best=null;
+    for(var i=1;i<xs.length;i++){
+      var gap=xs[i]-xs[i-1], mid=(xs[i]+xs[i-1])/2;
+      if(gap>W*0.12 && mid>W*0.30 && mid<W*0.70){
+        var left=items.filter(function(it){return it.x<mid;});
+        var right=items.filter(function(it){return it.x>=mid;});
+        if(left.length>=3 && right.length>=3 && right.length>=items.length*0.15){
+          var rh=false; right.forEach(function(it){ if(matchHeading(it.s)) rh=true; });
+          if(rh){ var score=Math.min(left.length,right.length); if(!best||score>best.score) best={split:mid,score:score}; }
+        }
+      }
+    }
+    return best? best.split : null;
+  }
   async function parsePdf(buf){
     initWorker();
     var pdf = await pdfjsLib.getDocument({data:buf}).promise, out=[];
     for(var p=1;p<=pdf.numPages;p++){
-      var page=await pdf.getPage(p), tc=await page.getTextContent(), rows={};
+      var page=await pdf.getPage(p), tc=await page.getTextContent();
+      var vp=page.getViewport({scale:1}), W=vp.width||600;
+      var items=[];
       tc.items.forEach(function(it){
         if(!it.str || !it.str.trim()) return;
-        var y=Math.round(it.transform[5]/2)*2;
-        (rows[y]=rows[y]||[]).push(it);
+        items.push({s:it.str, x:it.transform[4], y:it.transform[5], w:(it.width||0), size:(Math.abs(it.transform[3])||0), bold:/bold|black|heavy/i.test(it.fontName||'')});
       });
-      Object.keys(rows).map(Number).sort(function(a,b){return b-a;}).forEach(function(y){
-        var its=rows[y].sort(function(a,b){return a.transform[4]-b.transform[4];});
-        var size=0, bold=false, x0=Infinity, text='';
-        for(var k=0;k<its.length;k++){
-          var it=its[k];
-          var hh=Math.abs(it.transform[3])||0; if(hh>size) size=hh;
-          if(/bold|black|heavy/i.test(it.fontName||'')) bold=true;
-          if(it.transform[4]<x0) x0=it.transform[4];
-          if(k===0){ text+=it.str; continue; }
-          var prev=its[k-1];
-          var gap=it.transform[4]-(prev.transform[4]+(prev.width||0));
-          var needSpace = gap>(size*0.5) && /[A-Za-z0-9]$/.test(prev.str||'') && /^[A-Za-z0-9]/.test(it.str||'');
-          text += (needSpace?' ':'') + it.str;
-        }
-        text=text.replace(/\s+$/,'');
-        if(!text.trim()) return;
-        out.push({text:text, size:size, bold:bold, x:(x0===Infinity?0:x0), y:y, page:p, sole:(its.length===1)});
-      });
+      if(!items.length) continue;
+      var split=_detectColumnSplit(items, W);
+      if(split){
+        _pdfBuildLines(items.filter(function(i){return i.x< split;}), p).forEach(function(l){out.push(l);});
+        _pdfBuildLines(items.filter(function(i){return i.x>=split;}), p).forEach(function(l){out.push(l);});
+      } else {
+        _pdfBuildLines(items, p).forEach(function(l){out.push(l);});
+      }
     }
     return out;
   }
@@ -683,6 +715,7 @@ body.editing .e:focus{outline:2px solid var(--accent);background:#fffdf6;}
     lines.forEach(function(l){
       if(!l.text) return;
       if(!/[0-9A-Za-z\u4e00-\u9fa5]/.test(l.text)) return;
+      if(/^(第?\s*\d+\s*页(\s*[\/／]\s*\d+)?|\d+\s*[\/／]\s*\d+|[-—–]\s*\d+\s*[-—–]|page\s*\d+(\s*of\s*\d+)?)$/i.test(l.text.trim())) return;
       var k=l.text.replace(/\s+/g,'');
       if(seen[k]) return;
       seen[k]=1; clean.push(l);
