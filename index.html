@@ -282,7 +282,7 @@ body.editing .e:focus{outline:2px solid var(--accent);background:#fffdf6;}
   if(!_hadHash){ try{ history.replaceState(null,'', location.pathname + location.search + '#doc=' + DOCID); }catch(e){ location.hash = 'doc=' + DOCID; } }
   var KEY = 'resume-builder:' + DOCID;
   var resume = document.getElementById('resume');
-  var lastPdfBuf=null, lastPdfPhoto=null;
+  var lastPdfBuf=null, lastPdfPhoto=null, lastPdfFile=null;
   var htmlDefault = resume.innerHTML;
 
   function esc(s){return (s==null?'':String(s)).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
@@ -912,7 +912,7 @@ body.editing .e:focus{outline:2px solid var(--accent);background:#fffdf6;}
     await _loadScript('https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js');
     if(typeof Tesseract==='undefined') throw new Error('OCR 库加载失败（需联网）');
     initWorker();
-    var pdf=await pdfjsLib.getDocument({data:buf}).promise;
+    var pdf=await pdfjsLib.getDocument({data:buf.slice(0)}).promise;
     var worker=await Tesseract.createWorker('chi_sim+eng', 1, { logger:function(m){ if(m&&m.status){ status('OCR：'+m.status+(m.progress?(' '+Math.round(m.progress*100)+'%'):'')); } } });
     var out=[];
     for(var p=1;p<=pdf.numPages;p++){
@@ -940,11 +940,11 @@ body.editing .e:focus{outline:2px solid var(--accent);background:#fffdf6;}
     status('正在解析：'+f.name+' …');
     try{
       var buf=await f.arrayBuffer(), lines;
-      if(/\.pdf$/i.test(f.name)) lines=await parsePdf(buf);
+      if(/\.pdf$/i.test(f.name)) lines=await parsePdf(buf.slice(0));
       else if(/\.docx$/i.test(f.name)) lines=await parseDocx(buf);
       else if(/\.doc$/i.test(f.name)) throw new Error('旧版 .doc 不支持，请另存为 .docx 或 PDF');
       else throw new Error('仅支持 PDF / Word(.docx)');
-      if(/\.pdf$/i.test(f.name)){ lastPdfBuf=buf; }
+      if(/\.pdf$/i.test(f.name)){ lastPdfBuf=buf; lastPdfFile=f; }
       if(!lines.length){
         if(/\.pdf$/i.test(f.name)){ lastPdfPhoto=null; showOcr('未提取到文字层（扫描件/图片型 PDF），可尝试本地 OCR（首次需联网下载模型，不上传文件）'); status('未提取到文字层，可点击「OCR 识别」','err'); return; }
         throw new Error('未提取到文字（可能是扫描件/图片型 PDF）');
@@ -1013,14 +1013,16 @@ body.editing .e:focus{outline:2px solid var(--accent);background:#fffdf6;}
   };
   document.getElementById('btnOcrClose').onclick=function(){ hideOcr(); };
   document.getElementById('btnOcr').onclick=async function(){
-    if(!lastPdfBuf) return;
+    if(!lastPdfBuf && !lastPdfFile) return;
     var btn=this; btn.disabled=true; btn.textContent='识别中…';
     try{
-      var lines=await ocrPdf(lastPdfBuf);
+      var src = (lastPdfBuf && lastPdfBuf.byteLength>0) ? lastPdfBuf : (lastPdfFile ? await lastPdfFile.arrayBuffer() : null);
+      if(!src || src.byteLength===0) throw new Error('PDF 数据已失效，请重新上传');
+      if(!lastPdfPhoto){ try{ lastPdfPhoto=await extractPdfPhoto(src); }catch(e){} }
+      var lines=await ocrPdf(src);
       if(!lines.length) throw new Error('OCR 未识别到文字');
       var model=toModel(lines);
-      var photo=lastPdfPhoto; if(!photo){ try{ photo=await extractPdfPhoto(lastPdfBuf); }catch(e){} }
-      resume.innerHTML=renderResume(model, photo);
+      resume.innerHTML=renderResume(model, lastPdfPhoto);
       if(document.body.classList.contains('editing')) editable(true);
       layoutAll(); hideOcr(); save();
       status('OCR 完成：已生成 '+model.sections.length+' 个板块，点「编辑」可修改','ok');
@@ -1183,7 +1185,7 @@ body.editing .e:focus{outline:2px solid var(--accent);background:#fffdf6;}
   document.getElementById('help').addEventListener('click', function(e){ if(e.target===this) this.classList.remove('on'); });
   try{ if(!localStorage.getItem('resume-guide-v1')){ var gd=document.getElementById('guide'); if(gd) gd.classList.add('show'); } }catch(e){}
 
-  window.__rb = { handleFile: handleFile, parseDocx: parseDocx, parsePdf: parsePdf, toModel: toModel, renderResume: renderResume, matchHeading: matchHeading, extractDocxPhoto: extractDocxPhoto, extractPdfPhoto: extractPdfPhoto };
+  window.__rb = { handleFile: handleFile, parseDocx: parseDocx, parsePdf: parsePdf, toModel: toModel, renderResume: renderResume, matchHeading: matchHeading, extractDocxPhoto: extractDocxPhoto, extractPdfPhoto: extractPdfPhoto, _pdfBufLen: function(){ try{ return lastPdfBuf? lastPdfBuf.slice(0).byteLength : -1; }catch(e){ return -2; } } };
   layoutAll();
   status('提示：点「上传简历」或拖入 PDF / Word 自动生成 · 要点里写多个「标签：值」会按位置对齐成列');
 })();
