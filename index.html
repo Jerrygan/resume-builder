@@ -199,7 +199,7 @@ body.editing .e:focus{outline:2px solid var(--accent);background:#fffdf6;}
       <ol>
         <li><b>编辑内容</b>：点顶部【编辑】进入编辑模式，直接点任意文字修改，改完点【完成】。改动自动保存到本机。</li>
         <li><b>上传简历</b>：点【上传简历】或把 PDF / Word(.docx) / PSD 拖到页面，自动解析成可编辑的网页简历。</li>
-        <li><b>板块（一级标题）</b>：编辑模式下，板块右上角 <span class="grip">⠿</span> 拖动排序、<span class="xx">×</span> 删除；板块底部【＋ 要点】加要点；时间轴末尾【＋ 添加板块】新增板块。</li>
+        <li><b>板块（一级标题）</b>：编辑模式下，板块右上角 <span class="grip">⠿</span> 拖动排序、<span class="xx">×</span> 删除；板块底部【＋ 要点】加要点；时间轴末尾【＋ 添加板块】新增板块。删除「基本信息」后，末尾会出现【＋ 基本信息】可重新创建，板块内【＋ 信息项】可增减字段。</li>
         <li><b>要点</b>：右侧 <span class="grip">⠿</span> 在同一列表内拖动排序、<span class="xx">×</span> 删除。</li>
         <li><b>要点「标签」排版</b>：在要点里输入 <code>标签：内容</code>（中文「：」或英文「:」都可以），冒号前的一小段文字会渲染成<b>标签样式</b>（主题色底）。同一行可写多个标签，例如 <code>公司：星辰科技　职位：Java 工程师　时间：2021.07-至今</code>；同一板块内，各要点的第 1 / 2 / 3… 个标签会<b>按位置自动对齐成列</b>（标签较少的行自动补空列）。纯数字冒号（如 <code>12:30</code>）不会被当作标签。</li>
         <li><b>标签样式</b>：检测到「标签：值」格式时会提示是否转换；也可用工具栏「标签：原文/已转换」随时切换（选择按简历保存）。</li>
@@ -235,6 +235,22 @@ body.editing .e:focus{outline:2px solid var(--accent);background:#fffdf6;}
   <span class="ctl handle dragsec" draggable="true" title="拖动板块">⠿</span>
   <button class="ctl del secdel" data-act="delsection" title="删除该板块">×</button>
   <ul class="bul"><li class="bul-item"><span class="ctl handle dragli" draggable="true" title="拖动要点">⠿</span><span class="txt e">要点内容</span><button class="ctl del" data-act="delbullet" title="删除">×</button></li></ul>
+  <button class="ctl add" data-act="addsectionbullet">＋ 要点</button></section></template>
+<template id="tmpl-basicrow"><div><span class="k e">标签：</span><b class="e">内容</b></div></template>
+<template id="tmpl-section-basic"><section class="sec">
+  <span class="badge"><span class="dot"></span></span>
+  <h2 class="e">基本信息</h2>
+  <span class="ctl handle dragsec" draggable="true" title="拖动板块">⠿</span>
+  <button class="ctl del secdel" data-act="delsection" title="删除该板块">×</button>
+  <div class="basics">
+    <div><span class="k e">姓名：</span><b class="e"></b></div>
+    <div><span class="k e">性别：</span><b class="e"></b></div>
+    <div><span class="k e">年龄：</span><b class="e"></b></div>
+    <div><span class="k e">电话：</span><b class="e"></b></div>
+    <div><span class="k e">邮箱：</span><b class="e"></b></div>
+    <div><span class="k e">所在地：</span><b class="e"></b></div>
+  </div>
+  <button class="ctl add" data-act="addbasicrow">＋ 信息项</button>
   <button class="ctl add" data-act="addsectionbullet">＋ 要点</button></section></template>
 
 
@@ -24501,7 +24517,7 @@ module.exports = ZStream;
     var inp=document.getElementById('accent'); if(inp) inp.value=c;
   }
   function editable(on){
-    resume.querySelectorAll('.e').forEach(function(el){
+    resume.querySelectorAll('.e, .basics .k').forEach(function(el){
       if(on) el.setAttribute('contenteditable','true'); else el.removeAttribute('contenteditable');
     });
   }
@@ -25130,6 +25146,7 @@ module.exports = ZStream;
     });
     h.push('</div>');
     h.push('<button class="ctl add addsection" data-act="addsection">＋ 添加板块</button>');
+    h.push('<button class="ctl add addsection" data-act="addbasic">＋ 基本信息</button>');
     return h.join('');
   }
 
@@ -25409,6 +25426,8 @@ module.exports = ZStream;
     else if(act==='addsectionbullet'){ var sec=b.closest('.sec'); var uls=sec.querySelectorAll(':scope > ul.bul'); var ul=uls.length?uls[uls.length-1]:null; if(!ul){ ul=document.createElement('ul'); ul.className='bul'; sec.insertBefore(ul, b); } ul.appendChild(tpl('tmpl-bullet')); }
     else if(act==='addsubhead'){ var sec2=b.closest('.sec'); var entry=document.createElement('div'); entry.className='entry'; entry.innerHTML='<div class="subhead"><span class="ctl handle dragsub" draggable="true" title="拖动二级标题">⠿</span><h3 class="sub e">二级标题</h3><span class="time e"></span><button class="ctl del" data-act="delentry" title="删除">×</button></div><ul class="bul"></ul><button class="ctl add" data-act="addbullet">＋ 要点</button>'; entry.querySelector('ul.bul').appendChild(tpl('tmpl-bullet')); var anchorBtn=sec2.querySelector(':scope > button.add')||b; sec2.insertBefore(entry, anchorBtn); }
     else if(act==='addsection'){ var tl=resume.querySelector('.timeline'); if(tl) tl.appendChild(tpl('tmpl-section')); }
+    else if(act==='addbasic'){ var tl2=resume.querySelector('.timeline'); if(tl2){ var bs=tpl('tmpl-section-basic'); var bg=bs.querySelector('.badge'); if(bg) bg.innerHTML=ICONS.basic?'<img src="'+ICONS.basic+'" alt="">':'<span class="dot"></span>'; tl2.appendChild(bs); } }
+    else if(act==='addbasicrow'){ var bas=b.closest('.sec') && b.closest('.sec').querySelector('.basics'); if(bas) bas.appendChild(tpl('tmpl-basicrow')); }
     if(document.body.classList.contains('editing')) editable(true);
     layoutAll();
     save();
@@ -25483,7 +25502,30 @@ module.exports = ZStream;
   }
   function ensureSubheadButtons(){ [].forEach.call(resume.querySelectorAll('.sec'), function(sec){ if(!sec.querySelector(':scope > button[data-act="addsubhead"]')){ var btn=document.createElement('button'); btn.className='ctl add'; btn.setAttribute('data-act','addsubhead'); btn.textContent='＋ 二级标题'; sec.appendChild(btn); } }); }
   function upgradeItemsToEntries(){ [].forEach.call(resume.querySelectorAll('.sec .item'), function(it){ if(it.classList.contains('skill')) return; if(!it.parentNode) return; var left=it.querySelector('.left'); var tm=it.querySelector('.time'); var head=left?left.textContent.replace(/\s+/g,' ').trim():''; var time=tm?tm.textContent.trim():''; var f=parseEntryHead((head+' '+time).trim()); var org=f.org||head, role=f.role||'', tt=f.time||time; var descs=[].map.call(it.querySelectorAll('.desc'), function(d){ return d.textContent.replace(/\s+/g,' ').trim(); }).filter(Boolean); var ul=it.querySelector('ul.bul'); var bulletsHtml=ul?ul.innerHTML:''; var entry=document.createElement('div'); entry.className='entry'; var sub=document.createElement('div'); sub.className='subhead'; sub.innerHTML='<span class="ctl handle dragsub" draggable="true" title="\u62d6\u52a8\u4e8c\u7ea7\u6807\u9898">\u283f</span>' +'<h3 class="sub e">'+esc(org)+'</h3>' +(role?'<span class="role e">'+esc(role)+'</span>':'') +'<span class="time e">'+esc(tt)+'</span>' +'<button class="ctl del" data-act="delentry" title="\u5220\u9664">\u00d7</button>'; entry.appendChild(sub); var extra=descs.map(function(t){ return '<li class="bul-item"><span class="ctl handle dragli" draggable="true" title="\u62d6\u52a8\u8981\u70b9">\u283f</span><span class="txt e">'+esc(t)+'</span><button class="ctl del" data-act="delbullet" title="\u5220\u9664">\u00d7</button></li>'; }).join(''); var ulEl=document.createElement('ul'); ulEl.className='bul'; ulEl.innerHTML=bulletsHtml+extra; entry.appendChild(ulEl); var addb=document.createElement('button'); addb.className='ctl add'; addb.setAttribute('data-act','addbullet'); addb.textContent='\uff0b \u8981\u70b9'; entry.appendChild(addb); it.parentNode.replaceChild(entry, it); }); }
-  function layoutAll(){ upgradeItemsToEntries(); ensureSubheadButtons(); [].forEach.call(resume.querySelectorAll('.sec'), layoutSection); }
+  function isBasicSec(sec){ var h=sec.querySelector(':scope > h2'); var t=h?h.textContent.replace(/\s+/g,'').trim():''; return !!sec.querySelector(':scope > .basics') || /^(基本信息|个人信息|个人资料|基本资料)$/.test(t); }
+  function ensureBasicTools(){
+    [].forEach.call(resume.querySelectorAll('.sec'), function(sec){
+      if(!isBasicSec(sec)) return;
+      if(!sec.querySelector(':scope > button[data-act="addbasicrow"]')){
+        var btn=document.createElement('button'); btn.className='ctl add'; btn.setAttribute('data-act','addbasicrow'); btn.textContent='＋ 信息项';
+        var pt=sec.querySelector(':scope > button[data-act="addsectionbullet"]');
+        if(pt) sec.insertBefore(btn, pt); else sec.appendChild(btn);
+      }
+    });
+  }
+  function ensureBasicAddButton(){
+    var tl=resume.querySelector('.timeline'); if(!tl) return;
+    var has=false;
+    [].forEach.call(tl.querySelectorAll('.sec'), function(sec){ if(isBasicSec(sec)) has=true; });
+    var btn=resume.querySelector('button[data-act="addbasic"]');
+    if(has){ if(btn) btn.remove(); return; }
+    if(btn) return;
+    var addsec=resume.querySelector('button[data-act="addsection"]');
+    btn=document.createElement('button'); btn.className='ctl add addsection'; btn.setAttribute('data-act','addbasic'); btn.textContent='＋ 基本信息';
+    if(addsec && addsec.parentNode) addsec.parentNode.insertBefore(btn, addsec);
+    else tl.appendChild(btn);
+  }
+  function layoutAll(){ upgradeItemsToEntries(); ensureSubheadButtons(); ensureBasicTools(); ensureBasicAddButton(); [].forEach.call(resume.querySelectorAll('.sec'), layoutSection); }
   resume.addEventListener('focusin', function(e){
     var el=e.target.closest&&e.target.closest('.txt');
     if(el && el.dataset.md!=null){ el.textContent = el.dataset.md; }
