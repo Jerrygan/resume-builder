@@ -67,9 +67,13 @@ button.del{position:absolute;right:-2px;top:0;background:#fff;color:#c0392b;bord
 .handle{background:#fff;border:1px solid #d9d9d9;border-radius:50%;width:20px;height:20px;line-height:18px;text-align:center;font-size:12px;color:#999;cursor:grab;z-index:3;}
 .handle:active{cursor:grabbing;}
 .dragging{opacity:.45;}
-.subhead{position:relative;margin:12px 0 4px;}
-h3.sub{display:inline-block;font-family:"方正粗黑宋简体","Microsoft YaHei",sans-serif;font-size:15px;color:#1f2937;font-weight:700;margin:0;padding-left:10px;border-left:3px solid var(--accent);line-height:1.45;}
-.subhead .del{position:static;margin-left:8px;vertical-align:middle;}
+.entry{margin:0 0 14px;}
+.subhead{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;margin:10px 0 4px;}
+.subhead .dragsub{order:-1;flex:none;align-self:center;}
+h3.sub{font-family:"Microsoft YaHei","方正粗黑宋简体",sans-serif;font-size:15px;color:#222;font-weight:700;margin:0;line-height:1.5;}
+.subhead .role{color:var(--accent);font-size:13.5px;}
+.subhead .time{color:#777;font-size:13.5px;margin-left:auto;white-space:nowrap;}
+.subhead .del{position:static;margin-left:6px;align-self:center;}
 .txt code{font-family:Consolas,Menlo,monospace;font-size:12.5px;background:#f2f3f5;border:1px solid #e3e5e8;border-radius:4px;padding:0 4px;color:#444;}
 .txt mark{background:linear-gradient(180deg,transparent 55%,var(--accent-soft) 55%);color:inherit;padding:0 1px;border-radius:2px;}
 .txt strong{font-weight:700;color:#222;}
@@ -25082,15 +25086,16 @@ module.exports = ZStream;
   }
   function renderEntries(entries){
     return entries.map(function(e){
-      var s='<div class="item">', left='', time='';
+      var s='<div class="entry">', org='', role='', time='';
       if(e.h){
         var f=parseEntryHead(e.h);
-        time=f.time||'';
-        if(f.org){ left+='<b class="e">'+esc(f.org)+'</b>'; }
-        if(f.role){ left+=' <span class="role e">'+esc(f.role)+'</span>'; }
-        if(!left && !f.time){ left='<b class="e">'+esc(e.h)+'</b>'; }
+        org=f.org||e.h; role=f.role||''; time=f.time||'';
+        s+='<div class="subhead"><span class="ctl handle dragsub" draggable="true" title="拖动二级标题">⠿</span>'
+          +'<h3 class="sub e">'+esc(org)+'</h3>'
+          +(role?'<span class="role e">'+esc(role)+'</span>':'')
+          +'<span class="time e">'+esc(time)+'</span>'
+          +'<button class="ctl del" data-act="delentry" title="删除">×</button></div>';
       }
-      s+='<div class="row"><div class="left">'+left+'</div><span class="time e">'+esc(time)+'</span><button class="ctl del" data-act="delentry" title="删除">×</button></div>';
       s+='<ul class="bul">'+e.b.map(bulletLi).join('')+'</ul>';
       s+='<button class="ctl add" data-act="addbullet">＋ 要点</button>';
       s+='</div>';
@@ -25398,12 +25403,11 @@ module.exports = ZStream;
     else if(act==='addproject'){ var c2=b.parentElement.querySelector('.items'); if(c2) c2.appendChild(tpl('tmpl-project')); }
     else if(act==='addskill'){ var c3=b.parentElement.querySelector('.items')||b.parentElement.querySelector('.bul'); if(c3) c3.appendChild(tpl('tmpl-skill')); }
     else if(act==='addbullet'){ var ul=b.previousElementSibling; if(ul&&(ul.classList.contains('bul')||ul.classList.contains('basics'))) ul.appendChild(tpl('tmpl-bullet')); }
-    else if(act==='delentry'){ b.closest('.item').remove(); }
+    else if(act==='delentry'){ var ent=b.closest('.entry')||b.closest('.item'); if(ent) ent.remove(); }
     else if(act==='delbullet'){ b.closest('li').remove(); }
     else if(act==='delsection'){ b.closest('.sec').remove(); }
     else if(act==='addsectionbullet'){ var sec=b.closest('.sec'); var uls=sec.querySelectorAll(':scope > ul.bul'); var ul=uls.length?uls[uls.length-1]:null; if(!ul){ ul=document.createElement('ul'); ul.className='bul'; sec.insertBefore(ul, b); } ul.appendChild(tpl('tmpl-bullet')); }
-    else if(act==='addsubhead'){ var sec2=b.closest('.sec'); var wrap=document.createElement('div'); wrap.className='subhead'; var h3=document.createElement('h3'); h3.className='sub e'; h3.textContent='二级标题'; var db=document.createElement('button'); db.className='ctl del'; db.setAttribute('data-act','delsubhead'); db.title='删除二级标题'; db.textContent='×'; wrap.appendChild(h3); wrap.appendChild(db); var ul2=document.createElement('ul'); ul2.className='bul'; ul2.appendChild(tpl('tmpl-bullet')); var anchorBtn=sec2.querySelector(':scope > button.add')||b; sec2.insertBefore(wrap, anchorBtn); sec2.insertBefore(ul2, anchorBtn); }
-    else if(act==='delsubhead'){ var wrap3=b.closest('.subhead'); if(wrap3){ var nx=wrap3.nextElementSibling; if(nx&&nx.classList&&nx.classList.contains('bul')) nx.remove(); wrap3.remove(); } }
+    else if(act==='addsubhead'){ var sec2=b.closest('.sec'); var entry=document.createElement('div'); entry.className='entry'; entry.innerHTML='<div class="subhead"><span class="ctl handle dragsub" draggable="true" title="拖动二级标题">⠿</span><h3 class="sub e">二级标题</h3><span class="time e"></span><button class="ctl del" data-act="delentry" title="删除">×</button></div><ul class="bul"></ul><button class="ctl add" data-act="addbullet">＋ 要点</button>'; entry.querySelector('ul.bul').appendChild(tpl('tmpl-bullet')); var anchorBtn=sec2.querySelector(':scope > button.add')||b; sec2.insertBefore(entry, anchorBtn); }
     else if(act==='addsection'){ var tl=resume.querySelector('.timeline'); if(tl) tl.appendChild(tpl('tmpl-section')); }
     if(document.body.classList.contains('editing')) editable(true);
     layoutAll();
@@ -25478,7 +25482,8 @@ module.exports = ZStream;
     });
   }
   function ensureSubheadButtons(){ [].forEach.call(resume.querySelectorAll('.sec'), function(sec){ if(!sec.querySelector(':scope > button[data-act="addsubhead"]')){ var btn=document.createElement('button'); btn.className='ctl add'; btn.setAttribute('data-act','addsubhead'); btn.textContent='＋ 二级标题'; sec.appendChild(btn); } }); }
-  function layoutAll(){ ensureSubheadButtons(); [].forEach.call(resume.querySelectorAll('.sec'), layoutSection); }
+  function upgradeItemsToEntries(){ [].forEach.call(resume.querySelectorAll('.sec .item'), function(it){ if(it.classList.contains('skill')) return; if(!it.parentNode) return; var left=it.querySelector('.left'); var tm=it.querySelector('.time'); var head=left?left.textContent.replace(/\s+/g,' ').trim():''; var time=tm?tm.textContent.trim():''; var f=parseEntryHead((head+' '+time).trim()); var org=f.org||head, role=f.role||'', tt=f.time||time; var descs=[].map.call(it.querySelectorAll('.desc'), function(d){ return d.textContent.replace(/\s+/g,' ').trim(); }).filter(Boolean); var ul=it.querySelector('ul.bul'); var bulletsHtml=ul?ul.innerHTML:''; var entry=document.createElement('div'); entry.className='entry'; var sub=document.createElement('div'); sub.className='subhead'; sub.innerHTML='<span class="ctl handle dragsub" draggable="true" title="\u62d6\u52a8\u4e8c\u7ea7\u6807\u9898">\u283f</span>' +'<h3 class="sub e">'+esc(org)+'</h3>' +(role?'<span class="role e">'+esc(role)+'</span>':'') +'<span class="time e">'+esc(tt)+'</span>' +'<button class="ctl del" data-act="delentry" title="\u5220\u9664">\u00d7</button>'; entry.appendChild(sub); var extra=descs.map(function(t){ return '<li class="bul-item"><span class="ctl handle dragli" draggable="true" title="\u62d6\u52a8\u8981\u70b9">\u283f</span><span class="txt e">'+esc(t)+'</span><button class="ctl del" data-act="delbullet" title="\u5220\u9664">\u00d7</button></li>'; }).join(''); var ulEl=document.createElement('ul'); ulEl.className='bul'; ulEl.innerHTML=bulletsHtml+extra; entry.appendChild(ulEl); var addb=document.createElement('button'); addb.className='ctl add'; addb.setAttribute('data-act','addbullet'); addb.textContent='\uff0b \u8981\u70b9'; entry.appendChild(addb); it.parentNode.replaceChild(entry, it); }); }
+  function layoutAll(){ upgradeItemsToEntries(); ensureSubheadButtons(); [].forEach.call(resume.querySelectorAll('.sec'), layoutSection); }
   resume.addEventListener('focusin', function(e){
     var el=e.target.closest&&e.target.closest('.txt');
     if(el && el.dataset.md!=null){ el.textContent = el.dataset.md; }
@@ -25489,21 +25494,25 @@ module.exports = ZStream;
   });
 
   // 拖拽排序：板块 / 要点
-  var dragSec=null, dragLi=null;
+  var dragSec=null, dragLi=null, dragSub=null;
   resume.addEventListener('dragstart', function(e){
     var hs=e.target.closest&&e.target.closest('.dragsec');
     var hl=e.target.closest&&e.target.closest('.dragli');
-    if(hs){ dragSec=hs.closest('.sec'); dragSec.classList.add('dragging'); try{e.dataTransfer.effectAllowed='move'; e.dataTransfer.setData('text/plain','s');}catch(_){} }
+    var hsub=e.target.closest&&e.target.closest('.dragsub');
+    if(hsub){ dragSub=hsub.closest('.entry'); if(dragSub){ dragSub.classList.add('dragging'); try{e.dataTransfer.effectAllowed='move'; e.dataTransfer.setData('text/plain','e');}catch(_){} } }
+    else if(hs){ dragSec=hs.closest('.sec'); dragSec.classList.add('dragging'); try{e.dataTransfer.effectAllowed='move'; e.dataTransfer.setData('text/plain','s');}catch(_){} }
     else if(hl){ dragLi=hl.closest('li'); dragLi.classList.add('dragging'); try{e.dataTransfer.effectAllowed='move'; e.dataTransfer.setData('text/plain','l');}catch(_){} }
   });
   resume.addEventListener('dragover', function(e){
-    if(dragSec){ var t=e.target.closest&&e.target.closest('.sec'); if(t&&t!==dragSec){ e.preventDefault(); var r=t.getBoundingClientRect(); if(e.clientY<r.top+r.height/2) t.parentNode.insertBefore(dragSec,t); else t.parentNode.insertBefore(dragSec,t.nextSibling); } }
+    if(dragSub){ var en=e.target.closest&&e.target.closest('.entry'); if(en&&en!==dragSub&&en.parentNode===dragSub.parentNode){ e.preventDefault(); var re=en.getBoundingClientRect(); if(e.clientY<re.top+re.height/2) en.parentNode.insertBefore(dragSub,en); else en.parentNode.insertBefore(dragSub,en.nextSibling); } }
+    else if(dragSec){ var t=e.target.closest&&e.target.closest('.sec'); if(t&&t!==dragSec){ e.preventDefault(); var r=t.getBoundingClientRect(); if(e.clientY<r.top+r.height/2) t.parentNode.insertBefore(dragSec,t); else t.parentNode.insertBefore(dragSec,t.nextSibling); } }
     else if(dragLi){ var li=e.target.closest&&e.target.closest('li'); if(li&&li!==dragLi&&li.parentNode===dragLi.parentNode){ e.preventDefault(); var r2=li.getBoundingClientRect(); if(e.clientY<r2.top+r2.height/2) li.parentNode.insertBefore(dragLi,li); else li.parentNode.insertBefore(dragLi,li.nextSibling); } }
   });
-  resume.addEventListener('drop', function(e){ if(dragSec||dragLi){ e.preventDefault(); } });
+  resume.addEventListener('drop', function(e){ if(dragSec||dragLi||dragSub){ e.preventDefault(); } });
   resume.addEventListener('dragend', function(){
     if(dragSec){ dragSec.classList.remove('dragging'); dragSec=null; }
     if(dragLi){ dragLi.classList.remove('dragging'); dragLi=null; }
+    if(dragSub){ dragSub.classList.remove('dragging'); dragSub=null; }
     layoutAll(); save();
   });
 
