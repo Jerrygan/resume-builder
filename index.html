@@ -67,6 +67,9 @@ button.del{position:absolute;right:-2px;top:0;background:#fff;color:#c0392b;bord
 .handle{background:#fff;border:1px solid #d9d9d9;border-radius:50%;width:20px;height:20px;line-height:18px;text-align:center;font-size:12px;color:#999;cursor:grab;z-index:3;}
 .handle:active{cursor:grabbing;}
 .dragging{opacity:.45;}
+.subhead{position:relative;margin:12px 0 4px;}
+h3.sub{display:inline-block;font-family:"方正粗黑宋简体","Microsoft YaHei",sans-serif;font-size:15px;color:#1f2937;font-weight:700;margin:0;padding-left:10px;border-left:3px solid var(--accent);line-height:1.45;}
+.subhead .del{position:static;margin-left:8px;vertical-align:middle;}
 .txt code{font-family:Consolas,Menlo,monospace;font-size:12.5px;background:#f2f3f5;border:1px solid #e3e5e8;border-radius:4px;padding:0 4px;color:#444;}
 .txt mark{background:linear-gradient(180deg,transparent 55%,var(--accent-soft) 55%);color:inherit;padding:0 1px;border-radius:2px;}
 .txt strong{font-weight:700;color:#222;}
@@ -196,6 +199,7 @@ body.editing .e:focus{outline:2px solid var(--accent);background:#fffdf6;}
         <li><b>要点</b>：右侧 <span class="grip">⠿</span> 在同一列表内拖动排序、<span class="xx">×</span> 删除。</li>
         <li><b>要点「标签」排版</b>：在要点里输入 <code>标签：内容</code>（中文「：」或英文「:」都可以），冒号前的一小段文字会渲染成<b>标签样式</b>（主题色底）。同一行可写多个标签，例如 <code>公司：星辰科技　职位：Java 工程师　时间：2021.07-至今</code>；同一板块内，各要点的第 1 / 2 / 3… 个标签会<b>按位置自动对齐成列</b>（标签较少的行自动补空列）。纯数字冒号（如 <code>12:30</code>）不会被当作标签。</li>
         <li><b>标签样式</b>：检测到「标签：值」格式时会提示是否转换；也可用工具栏「标签：原文/已转换」随时切换（选择按简历保存）。</li>
+        <li><b>二级标题</b>：编辑模式下每个板块底部有「＋ 二级标题」，可新增子标题，并在其下用「＋ 要点」添加内容；子标题右侧 × 可删除（连同其下要点）。</li>
         <li><b>行内标记</b>：要点支持 <code>**加粗**</code> <code>*斜体*</code> <code>`代码`</code> <code>==高亮==</code> <code>~~删除线~~</code>，失焦后自动渲染。</li>
         <li><b>照片 / 主题色</b>：编辑模式下可【更换照片】；顶部取色器更换主题色。</li>
         <li><b>打印 / 导出</b>：【打印 / PDF】输出 A4；【导出 HTML】得到可独立分发的单文件。</li>
@@ -25397,7 +25401,9 @@ module.exports = ZStream;
     else if(act==='delentry'){ b.closest('.item').remove(); }
     else if(act==='delbullet'){ b.closest('li').remove(); }
     else if(act==='delsection'){ b.closest('.sec').remove(); }
-    else if(act==='addsectionbullet'){ var sec=b.closest('.sec'); var ul=sec.querySelector(':scope > ul.bul'); if(!ul){ ul=document.createElement('ul'); ul.className='bul'; sec.insertBefore(ul, b); } ul.appendChild(tpl('tmpl-bullet')); }
+    else if(act==='addsectionbullet'){ var sec=b.closest('.sec'); var uls=sec.querySelectorAll(':scope > ul.bul'); var ul=uls.length?uls[uls.length-1]:null; if(!ul){ ul=document.createElement('ul'); ul.className='bul'; sec.insertBefore(ul, b); } ul.appendChild(tpl('tmpl-bullet')); }
+    else if(act==='addsubhead'){ var sec2=b.closest('.sec'); var wrap=document.createElement('div'); wrap.className='subhead'; var h3=document.createElement('h3'); h3.className='sub e'; h3.textContent='二级标题'; var db=document.createElement('button'); db.className='ctl del'; db.setAttribute('data-act','delsubhead'); db.title='删除二级标题'; db.textContent='×'; wrap.appendChild(h3); wrap.appendChild(db); var ul2=document.createElement('ul'); ul2.className='bul'; ul2.appendChild(tpl('tmpl-bullet')); var anchorBtn=sec2.querySelector(':scope > button.add')||b; sec2.insertBefore(wrap, anchorBtn); sec2.insertBefore(ul2, anchorBtn); }
+    else if(act==='delsubhead'){ var wrap3=b.closest('.subhead'); if(wrap3){ var nx=wrap3.nextElementSibling; if(nx&&nx.classList&&nx.classList.contains('bul')) nx.remove(); wrap3.remove(); } }
     else if(act==='addsection'){ var tl=resume.querySelector('.timeline'); if(tl) tl.appendChild(tpl('tmpl-section')); }
     if(document.body.classList.contains('editing')) editable(true);
     layoutAll();
@@ -25471,7 +25477,8 @@ module.exports = ZStream;
       x.t.innerHTML = html;
     });
   }
-  function layoutAll(){ [].forEach.call(resume.querySelectorAll('.sec'), layoutSection); }
+  function ensureSubheadButtons(){ [].forEach.call(resume.querySelectorAll('.sec'), function(sec){ if(!sec.querySelector(':scope > button[data-act="addsubhead"]')){ var btn=document.createElement('button'); btn.className='ctl add'; btn.setAttribute('data-act','addsubhead'); btn.textContent='＋ 二级标题'; sec.appendChild(btn); } }); }
+  function layoutAll(){ ensureSubheadButtons(); [].forEach.call(resume.querySelectorAll('.sec'), layoutSection); }
   resume.addEventListener('focusin', function(e){
     var el=e.target.closest&&e.target.closest('.txt');
     if(el && el.dataset.md!=null){ el.textContent = el.dataset.md; }
